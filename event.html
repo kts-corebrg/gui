@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Event @ ITAhM</title>
+		
+		<style>
+@import "css/style.css";
+
+body {
+    margin: 0; padding: 0;
+	position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+}
+
+main {
+    width: 1024px; height: 100%;
+    margin: 0 auto;
+    display: flex;
+	flex-direction: column;
+}
+
+h1, h2 {
+	color: #fff;
+}
+
+header {
+	flex: none;
+	color: #fff;
+	padding: 1em;
+}
+
+input[type=date] {
+	font-family: arial, tahoma, "맑은 고딕";
+	padding: 0.5em;
+}
+
+.container {
+	flex: 1;
+    height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+ul {
+	list-style: none;
+	padding: 0; margin: 0;
+}
+
+.header {
+    flex: none;
+	padding: 0.5em 0;
+	border-bottom: 1px solid #aaa;
+	background-color: #0084ff;
+	color: #fff;
+	font-weight: bold;
+	border-bottom: 4px solid #92a7af;
+	border-radius: 3px 3px 0 0;
+	text-shadow: 1px 1px 1px #00f;
+}
+
+.header li {
+	text-align: center;
+}
+
+.item li:not(:last-child) {
+	border-right: 1px solid transparent;
+}
+
+.header li:not(:last-child) {
+	border-right-color: #fff;
+}
+
+#list {
+	flex: 1;
+	background-color: #fafafa;
+	overflow-y: auto;
+}
+
+.item {
+	display: flex;
+	align-items: center;
+	border: 1px solid transparent;
+}
+
+.item> li {
+	padding: 0.5em;
+	box-sizing: border-box;
+	overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.item> li:nth-child(1) {
+	flex: none;
+	width: 5em;
+}
+
+.item> li:nth-child(2) {
+	width: 100px;
+	text-align: center;
+}
+
+.item> li:nth-child(3) {
+	width: 200px;
+	text-align: center;
+}
+
+.item> li:nth-child(4) {
+	flex: 1;
+}
+
+#list> .item:nth-child(odd) {
+	background-color: #ebebeb;
+}
+
+#list .item li:nth-child(1) img {
+	display: block;
+	margin: auto;
+	width: 24px; height: 24px;
+}
+
+#list .item:not(:last-child) {
+	border-bottom: 1px solid #c1c3d1;
+}
+
+		</style>
+		
+	</head>
+	
+	<body class="loading">	
+        <main>
+            <header>
+                <form>
+                    날짜 선택 :
+                    <input type="date" name="date">
+                </form>
+            </header>
+            <div class="container">
+                <div class="header">
+                    <ul class="item">
+                        <li>상태
+                        <li>시간
+                        <li>대상
+                        <li>이벤트 메세지 (<span id="count"></span>)
+                    </ul>
+                </div>
+                <div id="list"></div>
+            </div>
+        </main>
+  		
+		<div class="bg_loading"></div>
+		
+		<script>
+
+(function (form) {
+	const today = new Date(),
+		list = document.getElementById("list");
+	
+	top.clearLog();
+
+	postRequest(today.setHours(0, 0, 0, 0));
+
+	// KST
+	today.setHours(9, 0, 0, 0);
+
+	form.elements["date"].valueAsDate = today;
+
+	form.elements["date"].onchange = function (e) {
+		postRequest(this.valueAsDate.setHours(0, 0, 0, 0));
+	};
+
+	function postRequest(mills) {
+		document.body.classList.add("loading");	
+
+		for(let log; log = window.list.firstChild;) {
+			window.list.removeChild(log);
+		}
+		
+		top.postRequest({
+			command: "get",
+            target: "event",
+			date: mills.toString()
+		}, function () {
+			switch (this.status) {
+			case 200:
+				const
+					data = JSON.parse(this.responseText),
+                    df = document.createDocumentFragment(),
+                    indexArray = Object.keys(data).sort(function (a, b) {
+                        return parseInt(a) - parseInt(b);
+                    }),
+                    count = indexArray.length;
+                
+				
+				for (let i=0, item; i<count; i++) {
+					if (item = createItem(data[indexArray[i]])) {
+						df.appendChild(item);
+					}
+				}
+				
+				window.list.appendChild(df);
+				
+				list.scrollTop = list.scrollHeight;	
+				
+				document.getElementById("count").textContent = count;
+
+				document.body.classList.remove("loading");
+		
+				break;
+			default:
+				alert(top.getMessage(this.status));
+
+				console.log(this.responseText && JSON.parse(this.responseText).error);
+			}
+		});
+	}
+}) (document.querySelector("form"));
+
+function createItem(event) {
+	var ul = document.createElement("ul"),
+		icon = ul.appendChild(document.createElement("li")).appendChild(document.createElement("img"));
+	
+	ul.appendChild(document.createElement("li")).textContent = toTimeString(event.timestamp);
+	ul.appendChild(document.createElement("li")).textContent = event.name;
+	
+	switch(event.origin) {
+	case "exception":
+		return;
+		
+	case "critical":
+	case "snmp":
+	case "register":
+		
+		break;
+	case "status":
+	case "updown":
+		
+		break;
+	case "warning":
+		
+		break;	
+	case "system":
+		break;
+		default:
+	}
+
+	ul.appendChild(document.createElement("li")).textContent = event.message;
+
+	ul.classList.add("item");
+	
+	icon.src = event.level === 1? "/img/siren.png": event.level === 2? "/img/warning.png": "/img/normal.png";
+	
+	return ul;
+}
+
+function getDateString(mills) {
+	var date = new Date(mills),
+		yyyy = date.getFullYear(),
+		mm = date.getMonth() +1,
+		dd = date.getDate();
+	
+	return yyyy +"년 "+ (mm > 9? "": "0") + mm +"월"+ (dd > 9? "": "0") + dd +"일";
+}
+
+function toTimeString(mills) {
+	var date = new Date(mills),
+		hh = date.getHours(),
+		mm = date.getMinutes(),
+		ss = date.getSeconds();
+	
+	return (hh > 9? "": "0") + hh +":"+ (mm > 9? "": "0") + mm +":"+ (ss > 9? "": "0") + ss;
+}
+
+		</script>
+	
+	</body>
+	
+</html>

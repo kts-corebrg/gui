@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>CeMS Console</title>
+		
+		<style>
+
+body {
+    font-family: arial, tahoma, "맑은 고딕";
+    font-size: 10pt;
+	position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+    margin: 0; padding: 0;
+    background-color: #f9f9f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+main {
+    width: 320px;
+}
+
+form {
+    padding: 20px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+}
+
+h1, h2 {
+    text-align: center;
+}
+
+h2 {
+    color: #777;
+}
+
+input {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 10px;
+	border: 1px solid #ddd;
+	border-radius: 3px 3px 3px 3px;
+}
+
+input[type=submit],
+input[type=reset] {
+	margin-top: 20px;
+	background-image: linear-gradient(#7af, #0084ff 45%,  #0084ff 55%, #7af);
+	border: 1px solid #07f;
+	font-weight: bold;
+	color: #fff;
+}
+
+input[name="username"] {
+	background: transparent url("/img/user.png") no-repeat 10px center;
+	padding-left: 36px;
+}
+
+input[name="password"] {
+	background: transparent url("/img/lock.png") no-repeat 10px center;
+	padding-left: 36px;
+}
+
+.footer {
+    display: flex;
+}
+
+.footer >input {
+    flex: 1;
+}
+
+body:not(:lang(en)) :lang(en) {
+    display: none;
+}
+
+		</style>
+
+		<script>
+
+function onCancel(e) {
+	e.preventDefault();
+	
+	cancel();
+}
+
+function onSignIn(e) {
+	e.preventDefault();
+    
+    document.body.classList.add("loading");
+
+    window.thread.postMessage([window.agent, {
+            command: "signin",
+            username: this.elements["username"].value,
+            password: hex_md5(this.elements["password"].value)    
+        }]);
+}
+
+function cancel() {
+    window.localStorage.removeItem("agent");
+
+    window.location.replace("/connect.html");
+}
+
+		</script>
+	</head>
+	
+	<body>
+		<main>
+            <h1>Sign In</h1>
+            <h2 id="agent"></h2>
+            <form id="signin" class="account">
+                <p>Username</p>
+                <input type="text" name="username" value="root" required>
+                <p>Password</p>
+                <input type="password" name="password" value="root" required>
+                <div class="footer">
+                    <input type="reset" value="Cancel" class="button" lang="en">
+                    <input type="submit" value="Sign in" class="button" lang="en">
+                    <input type="reset" value="취소" class="button">
+                    <input type="submit" value="접속" class="button">
+                </div>
+            </form>
+            <h1>
+                <a href="http://www.corebrg.com">
+                    <img width="64" height="64" src="/img/logo.png">
+                </a>
+            </h1>
+		</main>
+		
+		<div class="bg_loading"></div>
+        
+        <script src="/js/md5.js"></script>
+		<script>
+
+var
+    thread = new Worker("/js/post_request.js"),
+    agent = window.localStorage.getItem("agent");
+
+if (!agent) {
+    window.location.replace("/connect.html");
+}
+
+document.getElementById("agent").textContent = agent;
+
+window.thread.onmessage = e => {
+    switch(e.data.status) {
+		case 200:
+			top.signIn(JSON.parse(e.data.responseText));
+			
+			break;
+		case 401:
+            alert("Error!\n\n"+
+                "계정이 존재하지 않거나 비밀번호가 일치하지 않습니다.");
+			
+			document.getElementById("signin").elements["username"].select();
+			
+			break;
+		case 503:
+            alert("Error!\n\n"+
+                "에이전트가 서비스를 준비하고 있습니다.");
+
+			break;
+		default:
+            alert("Error!\n\n"+
+                "에이전트가 응답하지 않습니다.\n\n"+
+                "상태: "+ e.data.status);
+			
+			cancel();
+    }
+
+    document.body.classList.remove("loading");
+};
+
+document.getElementById("signin").onsubmit = onSignIn;
+document.getElementById("signin").onreset = onCancel;
+
+
+		</script>
+	
+	</body>
+	
+</html>

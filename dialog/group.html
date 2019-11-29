@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta http-equiv="Cache-Control" content="no-cache">
+		
+		<title>dialog</title>
+		
+		<style>
+@import "/css/style.css";
+
+body {
+	position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: rgba(0, 0, 0, .8);
+}
+
+form {
+	width: 300px;
+	padding: 20px;
+	background-color: #fff;
+	position: relative;
+}
+
+h2 {
+	margin: 0; padding: 10px;
+	background-color: #0084ff;
+    color: #fff;
+    text-shadow: 0 2px 3px #000;
+}
+
+.table {
+	border: 1px solid #aaa;
+	padding: 1em;
+	margin: 1em 0;
+}
+
+.table ul {
+	list-style: none;
+	padding: 0; margin: 3px 0;
+	display: flex;
+	align-items: center;
+}
+
+.table li {
+	flex: 1;
+}
+
+.table li:first-child {
+	padding: .5em;
+	text-align: right;
+}
+
+.table li:last-child {
+	flex: 3;
+}
+
+.table li input[type="text"],
+.table li select {
+	padding: .5em;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+input[type="checkbox"] {
+	margin: .5em;
+	vertical-align: middle;
+}
+
+#profile:hover {
+	cursor: default;
+	text-decoration: underline;
+}
+
+u {
+	cursor: default;
+}
+
+footer {
+	display: flex;
+	margin-top: 1em;
+}
+
+footer> input {
+	flex: 1;
+	border-radius: 1.2em;
+	background-color: #0084ff;
+	color: #fff;
+	border: .2em solid transparent;
+	padding: .5em;
+}
+
+footer> input:hover {
+	background-color: #fff;
+	color: #0084ff;
+	border-color: #0084ff;
+}
+
+#close {
+	font-size: 20px;
+	position: absolute; top: 5px; right: 5px;
+	border: 3px solid transparent;
+}
+
+#close:hover {
+	border-color: #c68e17;
+}
+
+#close::before, #close::after {
+	background-color: #c68e17;
+}
+
+body:not(.edit) input[type=reset] {
+	display: none;
+}
+
+		</style>
+		<script></script>
+	</head>
+	
+	<body class="loading">
+	
+		<form class="rounded" autocomplete="off">
+			<i class="btn_close round" id="close"></i>
+			<h2>그룹</h2>
+			<div class="table">
+				<ul>
+					<li>이름</li>
+					<li>
+						<input type="text" name="name" placeholder="그룹 이름" autofocus required>
+					</li>
+				</ul>
+				<ul>
+					<li>타입</li>
+					<li>
+						<select name="type" required></select>
+					</li>
+				</ul>
+			</div>
+			
+			<footer>
+				<input type="reset" value="삭제">
+				<input type="submit" value="확인" disabled>
+			</footer>
+			
+		</form>
+		
+		<div class="bg_loading"></div>
+
+        <script src="/js/ITAhM.js"></script>
+        <script src="/js/icon.js"></script>
+		<script>
+
+if (top.account.level === 0) {
+	document.querySelector("input[type=submit]").disabled = false;
+	document.querySelector("input[type=reset]").disabled = false;
+}
+
+function close() {
+	top.closeDialog(true);
+}
+
+document.addEventListener("keydown", function (e) {
+	switch (e.keyCode) {
+	case 27:
+		close();
+		
+		break;
+	}
+});
+
+document.getElementById("close").onclick = close;
+
+(function (form) {
+	form.onreset = function (e) {
+		if (!confirm("선택한 그룹을 삭제하겠습니까?")) {
+			return;
+		}
+		
+		document.body.classList.add("loading");
+		
+		top.postRequest({
+			command: "remove",
+			target: "node",
+			id: window.id
+		}, function () {
+			switch (this.status) {
+				case 200:
+					reloadOpener();
+
+					break;
+				default:
+					alert(top.getMessage(this.status));
+
+					console.log(this.responseText && JSON.parse(this.responseText).error);
+			}
+		});
+	};
+
+	form.onsubmit = function (e) {
+		e.preventDefault();
+	
+		const request = {
+            target: "node",
+            node: {
+                name: form.elements["name"].value,
+                type: form.elements["type"].value
+            }
+		};
+		
+		document.body.classList.add("loading");
+
+        if (window.id) {
+            request.command = "set";
+            request.id = window.id;
+        }
+        else {
+            request.command = "add";
+        }
+
+		top.postRequest(request, function () {
+			switch (this.status) {
+				case 200:
+					reloadOpener();
+
+					break;
+				default:
+					alert(top.getMessage(this.status));
+
+					console.log(this.responseText && JSON.parse(this.responseText).error);
+			}
+		});		
+	};
+
+    function initDialog() {
+        if (window.id) {
+			top.postRequest({
+				command: "get",
+                target: "node",
+				id: window.id
+			}, function () {
+				switch (this.status) {
+				case 200:
+					window.base = JSON.parse(this.responseText);
+
+					form.elements["name"].value = base.name || "";
+					form.elements["type"].value = base.type;
+					
+					document.body.classList.add("edit");
+
+					break;
+
+				default:
+					alert(top.getMessage(this.status));
+
+					console.log(this.responseText && JSON.parse(this.responseText).error);
+				}
+
+				document.body.classList.remove("loading");
+			});
+		}
+		else {
+			document.body.classList.remove("loading");
+		}
+    }
+
+	// public
+	window.initialize = function (id) {
+		const opener = this;
+
+		window.reloadOpener = function () {
+			opener.location.reload();
+			
+			close();
+		};
+		
+		window.id = id;
+
+		top.postRequest({
+            command: "get",
+            target: "icon"
+        }, function () {
+            switch (this.status) {
+            case 200:
+                const
+                    iconData = ITAhM.iconData,
+                    customData = JSON.parse(this.responseText),
+                    df = document.createDocumentFragment();
+
+                for (let type in customData) {
+                    iconData[type] = customData[type];
+                }
+
+                for (let type in iconData) {
+                    if (iconData[type].group === "group") {
+                        df.appendChild(document.createElement("option")).text = type;
+                    }
+                }
+
+                form.elements["type"].appendChild(df);
+                form.elements["type"].selectedIndex = -1;
+
+                initDialog();
+
+                break;
+
+            default:
+                alert(top.getMessage(this.status));
+
+                console.log(this.responseText && JSON.parse(this.responseText).error);
+            }
+        });
+	};
+}) (document.querySelector("form"));
+
+	</script>
+	
+	</body>
+	
+</html>

@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta http-equiv="Cache-Control" content="no-cache">
+		
+		<title>ITAhM</title>
+		
+		<style>
+@import "/css/style.css";
+
+body {
+    position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+    margin: 0; padding: 0;
+}
+
+svg {
+	width: 100%; height: 100%;
+	animation-duration: .5s;
+	animation-timing-function:  cubic-bezier(.9, .1, .9, .1);
+}
+
+polyline {
+    fill: none;
+    stroke-dasharray: 5px;
+    animation: flow 0.5s infinite linear;
+}
+
+text::selection {
+	background: none;
+}
+
+text {
+	font-family: tahoma, arial, "맑은 고딕";
+	text-anchor: middle;
+    fill: #fff;
+}
+
+#path text {
+    fill: #fcba30;
+}
+
+.node text {
+	font-size: 10px;
+	fill: #fff;
+}
+
+.parent text {
+	font-size: 12px; font-weight: bold;
+	fill: #336;
+	stroke: none;
+	pointer-events: none;
+}
+
+.line:not(.show) rect {
+	display: none;
+}
+
+.line rect {
+	transition: height 2s cubic-bezier(0.8, -0.6, 0.8, 1.5);
+	fill: rgba(210, 210, 210, 0.2);
+}
+
+.line rect:nth-of-type(2) {
+	fill: #0f0;
+}
+
+.line rect:nth-of-type(3) {
+	fill: #f60;
+}
+
+#link text {
+	font-size: 11px;
+	fill: #aaa;
+	cursor: pointer;
+
+}
+
+#link line {
+	stroke: #800;
+	stroke-width: 2;
+	stroke-dasharray: 2, 2;
+}
+
+#link.match line {
+	stroke: #0f0;
+}
+
+#path tspan {
+    cursor: pointer;
+}
+
+#node text {
+	font-size: 12px;
+    dominant-baseline: hanging;
+}
+
+body.loading g {
+	display: none;
+}
+
+.node * {
+	pointer-events: none;
+}
+
+.node circle {
+	pointer-events: all;
+	stroke-width: 5px;
+	stroke: none;
+	fill: none;
+}
+
+.node.group circle {
+	fill: #400080;
+}
+
+.node.critical circle {
+	stroke: #fa0;
+	animation: status 2s infinite;
+}
+
+.node.shutdown circle {
+	stroke: #f00;
+	animation: status 2s infinite;
+}
+
+.parent {
+	fill: #0084ff;
+	stroke: #ddd; stroke-width: 5px;
+}
+
+body:not(.submap) .parent {
+    display: none;
+}
+
+.no_pointer_event {
+	pointer-events: none;
+}
+
+body.name #node tspan:last-child,
+body:not(.name) #node tspan:first-child {
+	display: none;
+}
+
+@keyframes initialize {
+	from {
+		transform: rotate(0) scale(.1);
+	}
+    to {
+    	transform: rotate(360deg) scale(1);
+    }
+}
+
+@keyframes status {
+	from {
+    	stroke-opacity: 0;
+    }
+    to {
+    	stroke-opacity: 1;
+    }
+}
+
+@keyframes flow {
+    to {
+        stroke-dashoffset: 10px;
+    }
+}
+
+        </style>
+        <script>
+        
+function getTraffic(e) {
+	if (e.data) {
+		window.lineMap[e.data.id].traffic(e.data.link);
+	}
+	else {
+		const line = {};
+
+		for (let id in window.lineMap) {
+			line[id] = parent.line[id];
+		}
+/*		
+		top.postRequest({
+			command: "get",
+			target: "traffic",
+			traffic: line
+		}, function () {
+			switch (this.status) {
+			case 200:
+				window.thread.postMessage(JSON.parse(this.responseText));
+
+				break;
+			default:
+				console.log(top.getMessage(this.status));
+
+				console.log(this.responseText && JSON.parse(this.responseText).error);
+			}
+		});
+	*/}
+    
+}
+
+function highlight() {
+	const scale = window.transform.getItem(1);
+	let start;
+
+	const optimize = t => {
+		if (isNaN(start)) {
+			start = t;
+		}
+		else {
+			window.scale = Math.min(1, (t - start) /1000) *3;
+
+			scale.setScale(window.scale, window.scale);
+
+			if (window.scale === 3) {
+				return;
+			}
+		}
+
+		requestAnimationFrame(optimize);
+	};
+
+	requestAnimationFrame(optimize);
+}
+
+function zoom(zoomIn) {
+	window.scale = zoomIn? window.scale * 1.1: window.scale / 1.1;
+
+	window.transform.getItem(1).setScale(window.scale, window.scale);
+}
+
+function resize() {
+	const rect = mapCanvas.getBoundingClientRect();
+	
+	transform.getItem(0).setTranslate(rect.width /2, rect.height /2);
+}
+	
+function moveMap(x, y) {
+	window.transform.getItem(2).setTranslate(x, y);
+}
+
+function onDragStart(e) {
+	const matrix = window.transform.getItem(2).matrix;
+	
+	window.click = false;
+	window.pos = {
+		x: matrix.e,
+		y: matrix.f
+	};
+}
+
+function onDragMove(e) {
+	var drag = e.detail;
+	
+	moveMap(window.pos.x + drag.dragX / window.scale, window.pos.y + drag.dragY / window.scale);
+}
+
+function createNodeTitle(node) {
+	const title = [];
+    
+	if (node.ip) {
+		title.push("IP 주소 : "+ node.ip);
+	}
+
+	if (node.name) {
+		title.push("노드명 : "+ node.name);
+	}
+
+    if("status" in node) {
+        title.push("상태 : "+ (node.status? "정상": "응답 없음"));
+    }
+
+    if("status" in node && node.status && "resource" in node) {
+        let
+            oidData,
+            cpu = [];
+            
+        for (let index in node.resource) {
+            oidData = node.resource[index];
+
+            //응답 속도
+            (function(rtt) {
+                if (rtt) {
+                    title.push("응답속도 : "+ rtt +"ms");
+                }
+
+            })(oidData["1.3.6.1.4.1.49447.1"]);
+            //물리 메모리
+            (function(type, used, size, units) {
+                if (type && type == "1.3.6.1.2.1.25.2.1.2" && used && size && units) {
+                    title.push("물리 메모리 : "+ Math.round(100* Number(used) / Number(size)) +" %");
+                }
+
+            })(oidData["1.3.6.1.2.1.25.2.3.1.2"]
+                , oidData["1.3.6.1.2.1.25.2.3.1.6"]
+                , oidData["1.3.6.1.2.1.25.2.3.1.5"]
+                , oidData["1.3.6.1.2.1.25.2.3.1.4"]);
+            
+            //CPU
+            (function(load) {
+                if (load) {
+                    cpu.push(Number(load));
+                }
+            })(oidData["1.3.6.1.2.1.25.3.3.1.2"]
+                || oidData["1.3.6.1.4.1.9.2.1.5.6"]
+                || oidData["1.3.6.1.4.1.9.9.109.1.1.1.1.3"]
+                || oidData["1.3.6.1.4.1.9.9.109.1.1.1.1.6"]
+                || oidData["1.3.6.1.4.1.6296.9.1.1.1.8"]
+                || oidData["1.3.6.1.4.1.37288.1.1.3.1.1"]);
+        }
+
+        if (cpu.length > 0) {
+            let sum = cpu.reduce((a, b) => Number(a)+ Number(b));
+
+            title.push("프로세서 로드 : "+  Math.min.apply(undefined, cpu).toFixed(2) +", "+ (sum / cpu.length).toFixed(2) +" ,"+ Math.max.apply(undefined, cpu).toFixed(2));
+        }
+    }
+
+	return title.join("\n");
+}
+
+function onMouseOver(e) {
+	var svgTitle = this.querySelector("title");
+
+	if (!svgTitle) {
+        svgTitle = document.createElementNS(SVG_NS, "title");
+        
+        //this.querySelector("image").appendChild(svgTitle);
+        this.appendChild(svgTitle);
+	}
+
+	top.postRequest({
+        command: "get",
+        target: "node",
+		id: Number(this.id),
+		resource: true
+	}, function () {
+		switch (this.status) {
+		case 200:
+			const title = createNodeTitle(JSON.parse(this.responseText));
+
+			if (title) {
+				svgTitle.textContent = title;
+            }
+            
+			break;
+		default:
+			console.log(top.getMessage(this.status));
+
+			console.log(this.responseText && JSON.parse(this.responseText).error);
+		}
+	});
+}
+
+function onSelectInterface(e) {
+    window.sessionStorage.setItem("previous", "/dashboard.html");
+    window.sessionStorage.setItem("node_id", this.dataset.id);
+    window.sessionStorage.setItem("index", this.dataset.index);
+    window.sessionStorage.setItem("chart", "/chart/throughput.html");
+    
+    parent.location.href = "/chart/chart.html";
+}
+
+function addNode(id, pos) {
+	const
+        node = parent.nodeData[id],
+		svgDevice = document.createElementNS(SVG_NS, "g"),
+		svgIcon = document.createElementNS(SVG_NS, "image"),
+		svgBG = document.createElementNS(SVG_NS, "circle"),
+		svgLabel = document.createElementNS(SVG_NS, "text"),
+		svgAddr = document.createElementNS(SVG_NS, "tspan"),
+		svgName = document.createElementNS(SVG_NS, "tspan"),
+		icon = parent.iconData[node.type || "unknown"];
+	
+    pos = pos || parent.posData[id];
+
+	svgIcon.setAttribute("x", window.ICON_SIZE *-1 /2);
+	svgIcon.setAttribute("y", window.ICON_SIZE *-1 /2);
+	svgIcon.setAttribute("width", window.ICON_SIZE +"px");
+	svgIcon.setAttribute("height", window.ICON_SIZE +"px");
+	
+	svgBG.setAttribute("r", window.OFFSET_C);
+	svgBG.setAttribute("cx", 0);
+	svgBG.setAttribute("cy", 0);
+	
+	svgDevice.setAttribute("transform", "translate("+ pos.x +","+ pos.y +")");
+	
+	svgDevice.id = id;
+
+	svgDevice.onmousedown = setClick;
+	
+	if (icon.group === "group") {
+		svgDevice.onclick = parent.moveStage.bind(svgDevice, id);
+
+		addClass(svgDevice, "group");
+	}
+	else if (node.protocol) {
+		svgDevice.onclick = function () { //bind 사용하면 event가 arguments로 따라가서 안됨
+			if (window.click) {
+                window.sessionStorage.setItem("node_id", id);
+
+                parent.location.href = "/resource.html";
+			}
+		};
+
+		svgDevice.onmouseenter = onMouseOver;
+	}
+
+	svgName.textContent = node.name || node.ip || "";
+	svgAddr.textContent = node.ip || node.name || "";
+	
+	svgLabel.appendChild(svgName);
+	svgLabel.appendChild(svgAddr);
+	
+	svgLabel.setAttribute("x", 0);
+	svgLabel.setAttribute("y", window.OFFSET_C);
+	
+	svgDevice.appendChild(svgBG);
+	svgDevice.appendChild(svgIcon);
+	svgDevice.appendChild(svgLabel);
+	
+	addClass(svgDevice, "node");
+	
+	window.nodeCanvas.appendChild(svgDevice);
+	
+	window.nodeSVGMap[id] = svgDevice;
+    
+	if ("protocol" in node) {
+		svgIcon.setAttributeNS(xlinkNS, "xlink:href", icon.src);
+	}
+	else if (icon.group === "group") {
+		svgIcon.setAttributeNS(xlinkNS, "xlink:href", icon.src);
+	}
+	else {
+		svgIcon.setAttributeNS(xlinkNS, "xlink:href", icon.disabled);
+    }
+    
+    return svgDevice;
+}
+
+function setNode(id, status) {
+    addClass(window.nodeSVGMap[id], status);
+}
+
+function setClick() {
+	window.click = true;
+}
+
+function addClass(e, ...args) {
+	var cls = e.getAttribute("class"),
+		classList = cls? cls.split(" "): [];
+	
+	args.forEach(className => {
+		if (classList.indexOf(className) === -1) {
+			classList.push(className);
+		}
+	});
+	
+	e.setAttribute("class", classList.join(" "));
+}
+
+function removeClass(e, className) {
+	var cls = e.getAttribute("class"),
+		classList = cls? cls.split(" "): [],
+		index;
+	
+	for (var i=1; i<arguments.length; i++) {
+		className = arguments[i];
+		
+		index = classList.indexOf(className);
+		
+		if (index !== -1) {
+			classList.splice(index, 1);
+		}
+	}
+	
+	e.setAttribute("class", classList.join(" "));
+}
+
+function hasClass(e, className) {
+	var cls = e.getAttribute("class"),
+		classList = cls? cls.split(" "): [];
+	
+	for (var i=1; i<arguments.length; i++) {
+		if (classList.indexOf(arguments[i]) == -1) {
+			return false;
+		}
+	}
+	
+	return true;
+}
+
+function drawPath(nodeFrom, nodeTo, option, linkArray) {
+    if (!(nodeFrom in window.nodeSVGMap) && !(nodeTo in window.nodeSVGMap)) {
+		return;
+	}
+
+    var
+        posFrom = parent.posData[nodeFrom],
+        posTo = parent.posData[nodeTo];
+
+    if (!(nodeFrom in nodeSVGMap)) {
+        const id = parent.findParentFromStage(posFrom.parent);
+
+        if (id) {
+            posFrom = parent.posData[id];
+        }
+        else if (parent.upper) {
+            posFrom = UPPER_POS;
+        }
+        else {
+            return;
+        }
+    }
+
+    if (!(nodeTo in nodeSVGMap)) {
+        const id = parent.findParentFromStage(posTo.parent);
+
+        if (id) {
+            posTo = parent.posData[id];
+        }
+        else if (parent.upper) {
+            posTo = UPPER_POS;
+        }
+        else {
+            return;
+        }
+    }
+    
+    const
+        container = document.createElementNS(SVG_NS, "g"),
+        path = document.createElementNS(SVG_NS, "polyline"),
+        x = posTo.x - posFrom.x,
+        y = posTo.y - posFrom.y;
+	
+	addClass(container, "path");
+    
+    window.pathCanvas.appendChild(container);
+
+    container.setAttribute("transform", "translate("+ posFrom.x +","+ posFrom.y +")");
+
+	path.setAttribute("x1", 0);
+	path.setAttribute("y1", 0);
+
+    switch (option.type) {
+        case "clock":
+            path.setAttribute("points", "0,0 "+ x +",0 "+ x +","+ y);
+
+            break;
+        case "counter":
+            path.setAttribute("points", "0,0 0,"+ y +" "+ x +","+ y);
+
+            break;
+        default:
+            path.setAttribute("points", "0,0 "+ x +", "+ y);
+    }
+
+    if (linkArray) {
+        const
+            labelFrom = [],
+            labelTo = [];
+        let
+            text, link;
+
+        linkArray.forEach(id => {
+            link = parent.linkData[id];
+
+            if (link.indexFrom) {
+                labelFrom.push({
+                    index: link.indexFrom,
+                    name: link.indexFromName
+                });
+            }
+            
+            if (link.indexTo) {
+                labelTo.push({
+                    index: link.indexTo,
+                    name: link.indexToName
+                });
+            }
+        });
+
+        if (labelFrom.length > 0) {
+            let tspan;
+
+            text = document.createElementNS(SVG_NS, "text");
+
+            container.appendChild(text);
+
+            switch(option.type) {
+                case "clock":
+                    text.setAttribute("x", x /2);
+                    text.setAttribute("y", 0);
+
+                    break;
+                case "counter":
+                    text.setAttribute("x", 0);
+                    text.setAttribute("y", y /2);
+
+                    break;
+                default:
+                    text.setAttribute("x", x /4);
+                    text.setAttribute("y", y /4);
+            }
+
+            labelFrom.forEach(label => {
+                tspan = document.createElementNS(SVG_NS, "tspan");
+
+                tspan.textContent = " "+ (label.name.length >= TEXT_TRIM?
+                    label.name.substring(0, TEXT_TRIM) +"...":
+                    label.name) +" ";
+
+                tspan.dataset.id = nodeFrom;
+                tspan.dataset.index = label.index;
+
+                tspan.onclick = onSelectInterface;
+
+                text.appendChild(tspan);
+
+                //console.log(tspan.getBBox());
+            });
+        }
+
+        if (labelTo.length > 0) {
+            let tspan;
+
+            text = document.createElementNS(SVG_NS, "text");
+
+            container.appendChild(text);
+
+            switch(option.type) {
+                case "clock":
+                    text.setAttribute("x", x);
+                    text.setAttribute("y", y /2);
+
+                    break;
+                case "counter":
+                    text.setAttribute("x", x /2);
+                    text.setAttribute("y", y);
+
+                    break;
+                default:
+                    text.setAttribute("x", x *3/4);
+                    text.setAttribute("y", y *3/4);
+            }
+            
+            labelTo.forEach(label => {
+                tspan = document.createElementNS(SVG_NS, "tspan");
+
+                tspan.textContent = " "+ (label.name.length >= TEXT_TRIM?
+                    label.name.substring(0, TEXT_TRIM) +"...":
+                    label.name) +" ";
+                
+                tspan.dataset.id = nodeTo;
+                tspan.dataset.index = label.index;
+
+                tspan.onclick = onSelectInterface;
+
+                text.appendChild(tspan);
+
+                //console.log(tspan.getBBox());
+            });
+        }
+    }
+    
+    path.setAttribute("stroke", option.color || parent.settingData["linkColor"] || "#ffffff");
+    path.setAttribute("stroke-width", option.size || parent.settingData["linkSize"] || 1);
+
+    container.appendChild(path);
+}
+
+function lookAt (pos) {
+    moveMap(-pos.x, -pos.y);
+
+    window.scale = 0;
+
+    window.transform.getItem(1).setScale(0, 0);
+
+    window.animation = highlight;
+}
+
+/**public**/
+
+function start () {
+    resize();
+
+    window.thread = new Worker("/js/dashboard.js");
+    window.thread.onmessage = getTraffic;
+
+    if (window.animation) {
+        window.animation();
+    }
+    else {
+        mapCanvas.style.animationName = "initialize";
+    }
+}
+
+function display() {
+    if ("display" in parent.settingData) {
+	    document.body.classList[parent.settingData.display == "name"? "add": "remove"]("name");
+    }
+}
+
+        </script>
+    </head>
+
+    <body class="name">
+        <svg id="map">
+            <defs>
+                <circle r="35" id="circle"></circle>
+            </defs>
+            <g id="transform" transform="translate(0, 0) scale(1, 1) translate(0, 0)">
+                <g id="path"></g>
+                <g id="node"></g>
+            </g>
+        </svg>
+
+        <script src="js/ITAhM.js"></script>
+		<script src="js/Draggable.js"></script>
+        <script>
+
+const
+    TEXT_TRIM = 20,
+	LINE_WIDTH = 2,
+	BAR_WIDTH = 10,
+    BAR_HEIGHT = 30,
+	UPPER_POS = {
+		x: 0,
+		y: 0
+	};
+    
+var
+	SVG_NS = "http://www.w3.org/2000/svg",
+	xlinkNS = "http://www.w3.org/1999/xlink",
+	ICON_SIZE = 40,
+	OFFSET_C = ICON_SIZE * Math.sin(Math.PI /4),
+    OFFSET_R = OFFSET_C - ICON_SIZE /2;
+
+var 
+    mapCanvas = document.getElementById("map"),
+    nodeCanvas = document.getElementById("node"),
+	pathCanvas = document.getElementById("path"),
+	transform = document.getElementById("transform").transform.baseVal,
+    parentAnchor = document.querySelector("g.parent"),
+    lineMap = {},
+	lineSVGMap = {},
+    nodeSVGMap = {},
+	scale = 1,
+    click = false,
+    thread;
+
+new Draggable(window.mapCanvas);
+
+window.mapCanvas.addEventListener("dragon", onDragStart);
+window.mapCanvas.addEventListener("drag", onDragMove);
+
+window.mapCanvas.addEventListener("wheel", function (e) {
+	zoom(e.deltaY < 0);
+});
+
+(function (delay) {
+	var running = false,
+		start;
+	
+	function optimize(timestamp) {
+		if (timestamp - start > delay) {
+			resize();
+			
+			start = undefined;
+		}
+		else {
+			requestAnimationFrame(optimize);
+		}
+	}
+	
+	window.addEventListener("resize", function() {
+		if (running) {
+			return;
+		}
+			
+		running = true;
+	
+		requestAnimationFrame(function(timestamp) {
+			if (isNaN(start)) {
+				start = timestamp;
+				
+				requestAnimationFrame(optimize);
+			}
+			else {
+				start = timestamp;
+			}
+			
+			running = false;
+		});
+	});
+})(300);
+
+        </script>
+    </body>
+</html>

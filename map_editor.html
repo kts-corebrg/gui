@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta http-equiv="Cache-Control" content="no-cache">
+		
+		<title>ITAhM</title>
+		
+		<style>
+@import "/css/style.css";
+
+body {
+	font-family: arial, tahoma, "맑은 고딕";
+	font-size: 10pt;
+	position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+	margin: 0; padding: 0;
+}
+
+body, input, button {
+	margin: 0;
+	padding: 0; 
+}
+
+#selector >rect {
+	fill: #ddd;
+	fill-opacity: 0.5;
+	transform-origin: left top;
+}
+
+#selector:not(.active) {
+	display: none;
+}
+
+#map {
+	width: 100%; height: 100%;
+}
+
+/* svg*/
+text::selection {
+	background: none;
+}
+
+text {
+	font-family: 10px "맑은 고딕", Tahoma, Arial;
+	fill: #fff;
+	text-anchor: middle;
+}
+
+#line text {
+	font-size: 11px;
+	fill: #aaa;
+}
+
+polyline {
+    fill: none;
+}
+
+#link line {
+	stroke: #800;
+	stroke-width: 2;
+	stroke-dasharray: 2, 2;
+}
+
+#link.match line {
+	stroke: #0f0;
+}
+
+g.node >text {
+	font-size: 12px;
+}
+
+:not(#select) >#anchor,
+body.loading g {
+	display: none;
+}
+
+#anchor.group >#link_anchor {
+	display: none;
+}
+
+g.node *,
+body.drag #check circle,
+body.drag #select circle {
+	pointer-events: none;
+}
+
+g.node circle {
+	pointer-events: all;
+	stroke-width: 5px;
+	stroke: none;
+	fill: none;
+}
+
+g.node.parent circle {
+	stroke: #ddd;
+	fill: #0084ff;
+}
+
+#select >g.node >circle,
+#check >g.node >circle {
+	fill: #fff;
+}
+
+#parent {
+	transform-origin: right bottom;
+}
+
+#parent >circle:not(:hover) {
+	stroke: #ddd; stroke-width: 5px;
+}
+
+g.group >circle {
+	stroke: #400080;
+}
+
+g.upper >circle {
+	stroke: #ddd;
+}
+
+body.drag g.group:hover >circle {
+	stroke: #0f0;
+}
+/* control */
+.control {
+    position: absolute; top: 5px; left: 5px;
+    list-style: none;
+    margin: 0; padding: 0;
+    display: flex;
+    align-items: flex-start;
+}
+
+/* button */
+.button {
+    display: flex;
+    justify-content:center;
+    align-items:center;
+    width: 32px; height: 32px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    box-sizing: border-box;
+}
+
+.button.enable {
+    border-radius: 50%;
+    background-color: #0084ff;
+    border-color: #0084ff;
+}
+
+.button.enable.active:hover {
+    background-color: rgba(0, 132, 255, 0.5);
+}
+/* popup */
+
+.popup_container {
+    position: relative;
+}
+
+.popup {
+    display: flex;
+}
+
+.popup_container:not(:hover) .popup {
+	display: none;
+}
+
+.popup span {
+	background-color: #555;
+	display: block;
+}
+
+.popup span:hover {
+	background-color: #0084ff;
+}
+
+/**/
+
+body.name .node tspan:last-child,
+body:not(.name) .node tspan:first-child,
+body:not(.root) .root {
+	display: none;
+}
+
+		</style>
+		
+		<script>
+		
+function zoom() {
+	transform.getItem(1).setScale(window.scale, window.scale);
+}
+
+function isChecked(svgDevice) {
+	if (!hasClass(svgDevice, "node")) {
+		svgDevice = svgDevice.parentNode;
+	}
+	
+	return svgDevice.parentNode === window.checkCanvas || svgDevice.parentNode === window.selectCanvas;
+}
+
+function onMoveGroup() {
+	const id = this.id && Number(this.id)|| undefined;
+
+	[window.checkCanvas, window.selectCanvas].forEach(function (canvas) {
+		[].forEach.call(canvas.querySelectorAll("g.node"), function (node) {
+			parent.positionData[node.id].parent = id;
+		});
+	});
+
+    if (window.upper = id) {
+        window.sessionStorage.setItem("stage_id", String(id));
+    } else {
+        window.sessionStorage.removeItem("stage_id");
+    }
+
+    window.location.reload();
+}
+
+function addClass(e, ...args) {
+	var cls = e.getAttribute("class"),
+		classList = cls? cls.split(" "): [];
+	
+	args.forEach(className => {
+		if (classList.indexOf(className) === -1) {
+			classList.push(className);
+		}
+	});
+	
+	e.setAttribute("class", classList.join(" "));
+}
+
+function removeClass(e, className) {
+	var cls = e.getAttribute("class"),
+		classList = cls? cls.split(" "): [],
+		index;
+	
+	for (var i=1; i<arguments.length; i++) {
+		className = arguments[i];
+		
+		index = classList.indexOf(className);
+		
+		if (index !== -1) {
+			classList.splice(index, 1);
+		}
+	}
+	
+	e.setAttribute("class", classList.join(" "));
+}
+
+function hasClass(e, className) {
+	var cls = e.getAttribute("class"),
+		classList = cls? cls.split(" "): [];
+	
+	for (var i=1; i<arguments.length; i++) {
+		if (classList.indexOf(arguments[i]) == -1) {
+			return false;
+		}
+	}
+	
+	return true;
+}
+
+function findParentFromStage(id) {
+	for (let tmp; id; parent = tmp) {
+		if (!(id in parent.positionData)) {
+			return;
+		}
+
+		tmp = parent.positionData[id].parent;
+		
+		if (tmp === window.upper) {
+			return id;
+		}
+	}
+}
+
+function onClickDevice(e) {
+	e.stopPropagation();
+
+    if (!this.id) {
+        return;
+    }
+
+	if (window.isDragging) {
+		window.isDragging = false;
+	}
+	else if (e.shiftKey) {
+		window.nodeObjectMap[this.id].check(true);
+	}
+	else if (e.ctrlKey) {
+		window.nodeObjectMap[this.id].check();
+	}
+	else {
+		[].forEach.call(window.checkCanvas.querySelectorAll("g.node"), function (svgDevice) {
+			window.nodeObjectMap[svgDevice.id].reset();
+		});
+
+		window.nodeObjectMap[this.id].select();
+	}
+}
+
+function preventDefault(e) {
+	e.preventDefault();
+}
+
+function moveAnchor(x, y) {
+	window.selectCanvas.appendChild(window.anchor).setAttribute("transform", "translate("+ (x) +", "+ (y) +")");
+}
+
+function Node(id, base, pos) {
+	const
+		svgIcon = document.createElementNS(SVG_NS, "image"),
+		svgBG = document.createElementNS(SVG_NS, "circle"),
+		svgLabel = document.createElementNS(SVG_NS, "text"),
+		svgAddr = document.createElementNS(SVG_NS, "tspan"),
+		svgName = document.createElementNS(SVG_NS, "tspan"),
+		icon = window.iconData[base.type || "unknown"];
+	
+	this.node = document.createElementNS(SVG_NS, "g");
+	this.pos = pos || parent.positionData[id];
+	this.paths = [];
+	this.protocol = base.protocol || "";
+
+	if (!this.pos) {
+		parent.positionData[id] = this.pos = {
+			x: 0,
+			y: 0,
+			parent: window.upper
+		};
+	}
+	else {
+		this.pos.x = Math.round(this.pos.x /10) *10;
+		this.pos.y = Math.round(this.pos.y /10) *10;
+	}
+
+	svgIcon.setAttribute("x", ICON_SIZE *-1 /2);
+	svgIcon.setAttribute("y", ICON_SIZE *-1 /2);
+	svgIcon.setAttribute("width", ICON_SIZE +"px");
+	svgIcon.setAttribute("height", ICON_SIZE +"px");
+	
+	svgBG.setAttribute("r", OFFSET_C);
+	svgBG.setAttribute("cx", 0);
+	svgBG.setAttribute("cy", 0);
+
+	this.node.id = id;
+	this.node.setAttribute("transform", "translate("+ this.pos.x +","+ this.pos.y +")");
+	this.node.onclick = onClickDevice;
+	this.node.addEventListener("link", onLink);
+	
+    if (icon.group === "group") {
+		this.node.ondblclick = onEnterGroup;
+
+		this.node.addEventListener("movegroup", onMoveGroup);
+		
+		addClass(this.node, "group");
+	}
+	
+	svgName.textContent = base.name || base.ip || "";
+	svgAddr.textContent = base.ip || base.name || "";
+	
+	svgLabel.appendChild(svgName);
+	svgLabel.appendChild(svgAddr);
+	
+	svgLabel.setAttribute("x", 0);
+	svgLabel.setAttribute("y", OFFSET_C + 16);
+	// text baseline이 글자의 밑을 기준으로 하므로 글자 크기만큼 내려준다.
+	
+	this.node.appendChild(svgBG);
+	this.node.appendChild(svgIcon);
+	this.node.appendChild(svgLabel);
+	
+	addClass(this.node, "node");
+	
+	svgIcon.setAttributeNS(XLINK_NS, "xlink:href", "/"+ icon[base.protocol?"src": "disabled"] );
+}
+
+Node.prototype = {
+	layer: function (layer) {
+		layer.appendChild(this.node);
+	},
+	set: function () {
+		this.x = this.pos.x;
+		this.y = this.pos.y;
+	},
+	move: function (x, y) {
+		this.pos.x = Math.round((x + this.x) /10) *10;
+		this.pos.y = Math.round((y + this.y) /10) *10;
+
+		this.node.setAttribute("transform", "translate("+ this.pos.x +","+ this.pos.y +")");
+
+		this.paths.forEach(function (path) {
+			path.move();
+		});
+
+		if (window.selected === this) {
+			moveAnchor(this.pos.x, this.pos.y);	
+		}
+	},
+	connect: function (path) {
+		this.paths.push(path);
+	},
+	check: function (check) {
+		if (check === undefined) {
+			check = !this.checked;
+		}
+		
+		if (check) {
+			this.checked = true;
+		
+			window.checkCanvas.appendChild(this.node);
+		}
+		else {
+			this.reset();
+		}
+	},
+	select: function () {
+		if (window.selected === this) {
+			return;
+		}
+
+		this.check(true);
+
+		if (window.selected) {
+			window.selected.reset();
+		}
+
+		window.selected = this;
+	
+		window[hasClass(this.node, "group")? "addClass": "removeClass"](window.anchor, "group");
+	
+		moveAnchor(this.pos.x, this.pos.y);
+	},
+	reset: function () {
+		this.checked = false;
+
+		window.nodeCanvas.appendChild(this.node);
+
+		if (window.selected === this) {
+			window.selected = undefined;
+
+			window.fragment.appendChild(window.anchor);
+		}
+	}
+};
+
+function Path(posFrom, posTo, option, linkArray) {
+	this.container = document.createElementNS(SVG_NS, "g");
+	
+    this.posFrom = posFrom;
+	this.posTo = posTo;
+    this.type = option.type;
+	this.path = document.createElementNS(SVG_NS, "polyline");
+    
+    this.path.setAttribute("stroke", option.color || Path.COLOR);
+    this.path.setAttribute("stroke-width", option.size || Path.WIDTH);
+
+    this.container.appendChild(this.path);
+
+    const
+        labelFrom = [],
+        labelTo = [];
+
+    if (typeof linkArray === typeof []) {
+        linkArray.forEach(id => {
+            link = window.linkData[id];
+
+            if (link.indexFrom) {
+                const tspan = document.createElementNS(SVG_NS, "tspan");
+
+                tspan.textContent = " "+ (link.indexFromName.length >= Path.TEXT_TRIM?
+                    link.indexFromName.substring(0, Path.TEXT_TRIM) +"...":
+                    link.indexFromName) +" ";
+
+                labelFrom.push(tspan);
+            }
+            
+            if (link.indexTo) {
+                const tspan = document.createElementNS(SVG_NS, "tspan");
+
+                tspan.textContent = " "+ (link.indexToName.length >= Path.TEXT_TRIM?
+                    link.indexToName.substring(0, Path.TEXT_TRIM) +"...":
+                    link.indexToName) +" ";
+
+                labelTo.push(tspan);
+            }
+        });
+    }
+
+    if (labelFrom.length > 0) {
+        this.labelFrom = document.createElementNS(SVG_NS, "text");
+
+        labelFrom.forEach(tspan => this.labelFrom.appendChild(tspan));
+
+        this.container.appendChild(this.labelFrom);
+    }
+
+    if (labelTo.length > 0) {
+        this.labelTo = document.createElementNS(SVG_NS, "text");
+
+        labelTo.forEach(tspan => this.labelTo.appendChild(tspan));
+
+        this.container.appendChild(this.labelTo);
+    }
+
+    this.move();
+}
+
+Path.prototype = {
+	move: function () {
+        const
+            x = this.posTo.x - this.posFrom.x,
+            y = this.posTo.y - this.posFrom.y;
+        var points;
+
+		this.container.setAttribute("transform", "translate("+ this.posFrom.x +","+ this.posFrom.y +")");
+
+        switch (this.type) {
+            case "clock":
+                points = "0,0 "+ x +",0 "+ x +","+ y;
+
+                if (this.labelFrom) {
+                    this.labelFrom.setAttribute("x", x /2);
+                    this.labelFrom.setAttribute("y", 0);
+                }
+
+                if (this.labelTo) {
+                    this.labelTo.setAttribute("x", x);
+                    this.labelTo.setAttribute("y", y /2);
+                }
+
+                break;
+            case "counter":
+                points = "0,0 0,"+ y +" "+ x +","+ y;
+
+                if (this.labelFrom) {
+                    this.labelFrom.setAttribute("x", 0);
+                    this.labelFrom.setAttribute("y", y /2);
+                }
+
+                if (this.labelTo) {
+                    this.labelTo.setAttribute("x", x /2);
+                    this.labelTo.setAttribute("y", y);
+                }
+
+                break;
+            default:
+                points = "0,0 "+ x +", "+ y;
+
+                if (this.labelFrom) {
+                    this.labelFrom.setAttribute("x", x /4);
+                    this.labelFrom.setAttribute("y", y /4);
+                }
+
+                if (this.labelTo) {
+                    this.labelTo.setAttribute("x", x *3 /4);
+                    this.labelTo.setAttribute("y", y *3 /4);
+                }
+        }
+        
+        this.path.setAttribute("points", points);
+    },
+    to: function (canvas) {
+        canvas.appendChild(this.container);
+    }
+};
+
+Path.TEXT_TRIM = 20;
+Path.WIDTH = 0.5;
+Path.MAX_LABEL_LEN = 16;
+Path.COLOR = "#fff";
+Path.DIFF = 6;
+
+function drawPath(nodeFrom, nodeTo, path, linkArray) {
+	if (!(nodeFrom in window.nodeObjectMap) && !(nodeTo in window.nodeObjectMap)) {
+		return;
+	}
+
+    var
+        canvas = window.pathCanvas,
+        nodeFromObj, nodeToObj;
+
+    if (!(nodeFrom in window.nodeObjectMap)) {
+        const id = findParentFromStage(parent.positionData[nodeFrom].parent);
+
+        if (id) {
+            nodeFromObj = nodeObjectMap[id];
+        } else if (window.upper) {
+            nodeFromObj = window.upperNode;
+
+            canvas = window.upperCanvas;
+        } else {
+            return;
+        }
+    } else {
+        nodeFromObj = window.nodeObjectMap[nodeFrom];
+    }
+
+    if (!(nodeTo in window.nodeObjectMap)) {
+        const id = findParentFromStage(parent.positionData[nodeTo].parent);
+
+        if (id) {
+            nodeToObj = window.nodeObjectMap[id];
+        } else if (window.upper) {
+            nodeToObj = window.upperNode;
+
+            canvas = window.upperCanvas;
+        } else {
+            return;
+        }
+    }else {
+        nodeToObj = window.nodeObjectMap[nodeTo];
+    }
+
+	const
+        pathObject = new Path(nodeFromObj.pos, nodeToObj.pos, path, linkArray);
+
+    nodeFromObj.connect(pathObject);
+	nodeToObj.connect(pathObject);
+
+    pathObject.to(canvas);
+}
+
+function initialize() {
+	const df = document.createDocumentFragment();
+	var node;
+
+    if (window.upper) {
+        const pos = parent.positionData[window.upper];
+
+        window.upperNode = new Node (window.upper, window.nodeData[window.upper], {x: 0, y: 0});
+        
+        if (pos.parent) {
+            window.upperNode.node.id = pos.parent;
+        } else {
+            window.upperNode.node.removeAttribute("id");
+        }
+
+        window.upperNode.layer(window.upperCanvas);
+    }
+
+	for (let id in window.nodeData) {
+		node = new Node(id, window.nodeData[id]);
+		
+		if (node.pos.parent && !(node.pos.parent in window.nodeData)) {
+			node.pos.parent = window.upper;
+		}
+
+		if (node.pos.parent == window.upper) {
+			node.layer(df);
+
+			window.nodeObjectMap[id] = node;
+		}
+	}
+
+	window.nodeCanvas.appendChild(df);
+
+    const linkMap = {};
+    var link;
+
+    for (let id in window.linkData) {
+        link = window.linkData[id];
+
+        if (!linkMap[link.nodeFrom]) {
+            linkMap[link.nodeFrom] = {};
+        }
+
+        if (!linkMap[link.nodeTo]) {
+            linkMap[link.nodeTo] = {};
+        }
+
+        if (linkMap[link.nodeFrom][link.nodeTo]) {
+            linkMap[link.nodeFrom][link.nodeTo].push(id);
+        } else {
+            linkMap[link.nodeFrom][link.nodeTo] =
+            linkMap[link.nodeTo][link.nodeFrom] = [id];
+        } 
+    }
+
+    var peerMap;
+
+	for (let nodeFrom in window.pathData) {
+        peerMap = window.pathData[nodeFrom];
+
+        link = linkMap[nodeFrom];
+
+        for (let nodeTo in peerMap) {
+            drawPath(nodeFrom, nodeTo, peerMap[nodeTo], link && link[nodeTo]);
+        }
+	}
+	
+	zoom();
+
+	document.body.classList.remove("loading");
+}
+
+function onLink(e) {
+    const
+        nodeFrom = Math.min (Number(this.id), e.detail.peer),
+        nodeTo = Math.max (Number(this.id), e.detail.peer);
+    
+    top.postRequest({
+        command: "get",
+        target: "path",
+        nodeFrom: nodeFrom,
+        nodeTo: nodeTo
+    }, function () {
+        switch (this.status) {
+		case 200:
+            top.showDialog.call(window, "/dialog/path.html", nodeFrom, nodeTo, JSON.parse(this.responseText));
+
+			break;
+        case 204:
+            top.showDialog.call(window, "/dialog/path.html", nodeFrom, nodeTo);
+
+            break;
+		default:
+			alert(top.getMessage(this.status));
+
+			console.log(this.responseText && JSON.parse(this.responseText).error);
+		}
+    });
+}
+
+function onEnterGroup() {
+    if (this.id) {
+        window.sessionStorage.setItem("stage_id", this.id);
+    } else {
+        window.sessionStorage.removeItem("stage_id");
+    }
+
+	window.location.reload();
+}
+
+function onEvent(e) {
+	if (e.origin === "search" && !window.loading) {
+		window.loading = true;
+	
+		alert("Notice.\n\n새로운 노드가 탐지되었습니다.");
+	}
+}
+
+		</script>
+	</head>
+	
+	<body class="loading name">
+		<svg id="map">
+			<defs>
+				<circle r="35" id="circle"></circle>
+				<g id="anchor">
+					<image xlink:href="/img/svg/information.svg" id="edit_anchor" x="26" y="-8"
+						width="16" height="16" cursor="pointer"><!-- 34 -16/2, -16/2 -->
+						<title>이 장비의 정보를 수정합니다.</title>
+					</image>
+					<image xlink:href="/img/svg/anchor.svg" id="link_anchor" x="-8" y="-42"
+						width="16" height="16" cursor="pointer"><!-- -16/2, -34 -16/2 -->
+						<title>이 앵커를 드래그하여 다른 장비와 연결합니다.</title>
+					</image>
+				</g>
+			</defs>
+			<g id="container" transform="translate(0, 0) scale(1, 1) translate(0, 0)">
+				<g id="path"></g>
+                <g id="up"></g>
+                <g id="link">
+					<line x1="0" y1="0" x2="0" y2="0" />
+				</g>
+				<g id="node"></g>
+				<g id="check"></g>
+				<g id="select"></g>
+			</g>
+			<g id="selector">
+				<rect x="0" y="0" width="1" height="1"></rect>
+			</g>
+		</svg>
+		<ul class="control root">
+            <li>
+                <span class="button">
+                </span>
+            </li>
+            <li>
+                <span class="button">
+                </span>
+            </li>
+            <li>
+                <span class="button enable active">
+                    <img id="refresh" src="/img/btn/refresh.png" width="32px" height="32px" title="새로 고침">
+                </span>
+            </li>
+            <li class="popup_container">
+                <span class="button enable active">
+                    <img id="add" src="/img/btn/add.png" width="32px" height="32px" title="노드 추가">
+                </span>
+                <div class="popup">
+                    <span class="button enable active">
+                        <img id="add_node" src="/img/btn/add_node.png" width="32px" height="32px" title="SNMP/ICMP/TCP 노드 추가">
+                    </span>
+                    <span class="button enable active">
+                        <img id="add_group" src="/img/btn/add_group.png" width="32px" height="32px" title="그룹 노드 추가">
+                    </span>
+                    <span class="button enable active">
+                        <img id="search" src="/img/btn/search.png" width="32px" height="32px" title="네트워크 대역 탐색">
+                    </span>
+                </div>
+            </li>
+		</ul>
+		
+		<div class="bg_loading"></div>
+
+        <script src="/js/ITAhM.js"></script>
+        <script src="/js/icon.js"></script>
+		<script src="/js/Draggable.js"></script>
+		<script>
+		
+const
+	SVG_NS = "http://www.w3.org/2000/svg",
+	XLINK_NS = "http://www.w3.org/1999/xlink",
+	ICON_SIZE = 40,
+	OFFSET_C = ICON_SIZE * Math.sin(Math.PI /4);
+	//OFFSET_R = OFFSET_C - ICON_SIZE /2;
+
+var
+    thread = new Worker("/js/thread.js"),
+    upper = window.sessionStorage.getItem("stage_id") && Number(window.sessionStorage.getItem("stage_id")) || undefined,
+	nodeCanvas = document.getElementById("node"),
+	upperCanvas = document.getElementById("up"),
+	pathCanvas = document.getElementById("path"),
+	container = document.getElementById("container"),
+	linkCanvas = document.getElementById("link"),
+	selectCanvas = document.getElementById("select"),
+	checkCanvas = document.getElementById("check"),
+	linkSVG = linkCanvas.querySelector("line"),
+	anchor = document.getElementById("anchor"),
+	linkAnchor = document.getElementById("link_anchor"),
+	parentAnchor = document.querySelector("g.parent.node"),
+	fragment = document.createDocumentFragment(),
+	transform = container.transform.baseVal,
+	nodeObjectMap = {},
+	scale = 1,
+    nodeData, pathData, linkData,
+    iconData = ITAhM.iconData,
+	isDragging = false;
+
+thread.postMessage({
+    action: "initialize",
+    agent: window.localStorage.getItem("agent")
+});
+
+if (top.account.level === 0) {
+	document.body.classList.add("root");
+}
+
+document.onselectstart = function () {
+	return false;
+};
+
+document.getElementById("add").onclick = function () {
+	document.body.classList.add("dialog");
+};
+
+document.getElementById("refresh").onclick = function () {
+	window.location.reload();
+};
+
+(function () {
+	const mapCanvas = document.getElementById("map"),
+		selector = document.getElementById("selector"),
+		area = document.querySelector("#selector>rect"),
+		SHIFT = 0,
+		CTRL = 1;
+	var schedule, rect, action, key;
+
+	new Draggable(mapCanvas);
+
+	mapCanvas.addEventListener("click", () => {
+		if (window.isDragging) {
+			window.isDragging = false;
+		}
+		else {
+			[].forEach.call(window.checkCanvas.querySelectorAll("g.node"), function (svgDevice) {
+				window.nodeObjectMap[svgDevice.id].reset();
+			});
+		}
+	});
+
+	mapCanvas.addEventListener("dragon", function (e) {
+		var data = e.detail,
+			target = data.target;
+
+		if (data.shiftKey || data.ctrlKey) {
+			addClass(selector, "active");
+
+			selector.setAttribute("transform", "translate("+ data.x +","+ data.y +")");
+
+			action = "select";
+			key = data.shiftKey? SHIFT: CTRL;
+		}
+		else if (target === window.linkAnchor) {
+			const pos = window.selected.pos;
+			
+			window.linkCanvas.appendChild(window.linkAnchor);
+			window.linkCanvas.appendChild(window.linkSVG);
+			
+			window.linkSVG.setAttribute("x1", pos.x);
+			window.linkSVG.setAttribute("y1", pos.y);
+
+			action = "link"
+		}
+		else if (isChecked(target)) {
+			[window.selectCanvas, window.checkCanvas].forEach(function (canvas) {
+				for (let checked = canvas.querySelectorAll("g.node"), i=0, _i=checked.length; i<_i; i++) {
+					window.nodeObjectMap[checked[i].id].set();
+				}
+			});
+
+			action = "move";
+		}
+		else {
+			action = "";
+
+			for (let id in window.nodeObjectMap) {
+				window.nodeObjectMap[id].set();
+			}
+
+			window.upperCanvas.style.display = "none";
+		}
+		
+		window.isDragging = true;
+	});
+
+	mapCanvas.addEventListener("drag", function (e) {
+		var data = e.detail,
+			target = data.target,
+			x = Math.round(data.dragX / window.scale /10) *10,
+			y = Math.round(data.dragY / window.scale /10) *10;
+		
+		if (action === "select") {
+			area.setAttribute("transform", "scale("+ data.dragX +","+ data.dragY +")");
+		}
+		else if (action === "link") {
+			const
+				svgDevice = data.destination.parentNode,
+				pos = window.selected.pos;
+			
+			window.linkAnchor.setAttribute("transform", "translate("+ (pos.x + x) +","+ (pos.y + y) +")");
+			
+			if (hasClass(svgDevice, "node") && svgDevice !== window.selected.node && !hasClass(svgDevice, "group")) {
+				var matrix = svgDevice.transform.baseVal.getItem(0).matrix;
+				
+				x = matrix.e;
+				y = matrix.f;
+				
+				addClass(window.linkCanvas, "match");
+			}
+			else {
+				x += pos.x;
+				y += (pos.y -34);
+				
+				removeClass(window.linkCanvas, "match");
+			}
+			
+			window.linkSVG.setAttribute("x2", x);
+			window.linkSVG.setAttribute("y2", y);
+		}
+		else if (action === "move") {
+			document.body.classList.add("drag");
+			
+			[].forEach.call(window.checkCanvas.querySelectorAll("g.node"), svgNode => window.nodeObjectMap[svgNode.id].move(x, y));
+		}
+		else {
+			window.transform.getItem(2).setTranslate(x, y);
+		}
+	});
+
+	mapCanvas.addEventListener("dragoff", function (e) {
+		const
+			data = e.detail,
+			target = data.target;
+		
+		if (action === "select") {
+			let
+				matrix, x1, y1, x2, y2;
+
+			matrix = selector.transform.baseVal.getItem(0).matrix;
+
+			x1 = (matrix.e - rect.width /2) /window.scale;
+			y1 = (matrix.f - rect.height /2) /window.scale;
+
+			matrix = area.transform.baseVal.getItem(0).matrix;
+
+			if (matrix.a < 0) {
+				x2 = x1;
+				x1 = x1 + matrix.a /window.scale;
+			}
+			else {
+				x2 = x1 + matrix.a /window.scale;
+			}
+			
+			if (matrix.d < 0) {
+				y2 = y1;
+				y1 = y1 + matrix.d /window.scale;
+			}
+			else {
+				y2 = y1 + matrix.d /window.scale;
+			}
+			
+			if (key === SHIFT) {
+				[].forEach.call(window.nodeCanvas.querySelectorAll("g.node"), function (svgDevice) {
+					const node = window.nodeObjectMap[svgDevice.id];
+
+					if (node && x1 < node.pos.x && node.pos.x < x2 && y1 < node.pos.y && node.pos.y < y2) {
+						node.check(true);
+					}
+				});
+			}
+			else {
+				const tmp = [];
+				
+				[].forEach.call(window.checkCanvas.querySelectorAll("g.node"), svgDevice => {
+					const node = window.nodeObjectMap[svgDevice.id];
+
+					if (node && x1 < node.pos.x && node.pos.x < x2 && y1 < node.pos.y && node.pos.y < y2) {
+						tmp.push(node);
+					}
+				});
+
+				[].forEach.call(window.nodeCanvas.querySelectorAll("g.node"), svgDevice => {
+					const node = window.nodeObjectMap[svgDevice.id];
+
+					if (node && x1 < node.pos.x && node.pos.x < x2 && y1 < node.pos.y && node.pos.y < y2) {
+						node.check();
+					}
+				});
+
+				tmp.forEach(node => {
+					node.reset();
+				});
+			}
+
+			removeClass(selector, "active");
+		}
+		else if (action === "link") {
+			const svgDevice = data.destination.parentNode;
+			
+			window.anchor.appendChild(window.linkAnchor);
+			
+			window.linkAnchor.setAttribute("transform", "translate(0, 0)");
+			
+			window.fragment.appendChild(window.linkSVG);
+			
+			if (hasClass(svgDevice, "node") &&  svgDevice !== window.selected.node) {				
+				svgDevice.dispatchEvent(ITAhM.util.createCustomEvent("link", {
+					peer: Number(window.selected.node.id)
+				}));
+			}
+		}
+		else if (action ==="move") {
+			const svg = data.destination.parentNode;
+
+			document.body.classList.remove("drag");
+			
+			if (!hasClass(svg, "group")) {
+				return;
+			}
+
+			[window.checkCanvas, window.selectCanvas].forEach(function (canvas) {
+				[].forEach.call(canvas.querySelectorAll("g.node"), function (node) {
+					window.nodeObjectMap[node.id].move(0, 0);
+				});
+			});
+
+			svg.dispatchEvent(ITAhM.util.createCustomEvent("movegroup"));
+		}
+		else {
+			const matrix = window.transform.getItem(2).matrix;
+
+			for (let id in window.nodeObjectMap) {
+				window.nodeObjectMap[id].move(matrix.e, matrix.f);
+			}
+
+			window.transform.getItem(2).setTranslate(0, 0);
+
+			window.upperCanvas.style.display = "initial";
+		}
+	});
+
+	window.addEventListener("resize", function () {
+		clearTimeout(schedule);
+		
+		schedule = setTimeout(resize, 500);
+	});
+
+	function resize() {
+		rect = mapCanvas.getBoundingClientRect();
+		
+        window.transform.getItem(0).setTranslate(rect.width /2, rect.height /2);
+	}
+
+	resize();
+}) ();
+
+document.getElementById("add").onclick = function () {
+	document.body.classList.add("dialog");
+};
+
+document.getElementById("edit_anchor").onclick = e => {
+	const
+        node = window.nodeData[window.selected.node.id],
+        type = window.iconData[node.type || "unknown"];
+
+	top.showDialog.call(window,
+		type.group === "group"? "/dialog/group.html":
+		"/dialog/node.html", window.selected.node.id);
+	
+	e.stopPropagation();
+};
+
+window.addEventListener("wheel", function (e) {
+	zoom(e.deltaY < 0? scale *= 1.1: scale /= 1.1);
+});
+
+document.getElementById("search").onclick = e => top.showDialog.call(window, "/dialog/search.html");
+document.getElementById("add_node").onclick = e => top.showDialog.call(window, "/dialog/node.html");
+document.getElementById("add_group").onclick = e => top.showDialog.call(window, "/dialog/group.html");
+
+function initNode(e) {
+    switch(e.data.status) {
+        case 200:
+            window.nodeData = JSON.parse(e.data.responseText);
+            
+            thread.onmessage = initPath;
+
+            thread.postMessage({action: "request", request: {
+                command: "get",
+                target: "path"
+            }});
+
+            break;
+        case -1:
+            console.trace(e.data.exception);
+        default:
+            alert(top.getMessage(this.status));
+
+            console.log(this.responseText && JSON.parse(this.responseText).error);
+    }
+}
+
+function initPath(e) {
+    switch(e.data.status) {
+        case 200:
+            window.pathData = JSON.parse(e.data.responseText);
+            
+            thread.onmessage = initLink;
+            
+            thread.postMessage({action: "request", request: {
+                command: "get",
+                target: "link"
+            }});
+            
+            break;
+        case -1:
+            console.trace(e.data.exception);
+        default:
+            alert(top.getMessage(this.status));
+
+            console.log(this.responseText && JSON.parse(this.responseText).error);
+    }
+}
+
+function initLink(e) {
+    switch(e.data.status) {
+        case 200:
+            window.linkData = JSON.parse(e.data.responseText);
+            
+            thread.onmessage = initIcon;
+            
+            thread.postMessage({action: "request", request: {
+                command: "get",
+                target: "icon"
+            }});
+        
+            break;
+        case -1:
+            console.trace(e.data.exception);
+        default:
+            alert(top.getMessage(this.status));
+
+            console.log(this.responseText && JSON.parse(this.responseText).error);
+    }
+}
+
+function initIcon(e) {
+    switch(e.data.status) {
+        case 200:
+            const iconData = JSON.parse(e.data.responseText);
+
+            for (let type in iconData) {
+                window.iconData[type] = iconData[type];
+            }
+
+            thread.onmessage = initSetting;
+            
+            thread.postMessage({action: "request", request: {
+                command: "get",
+                target: "setting"
+            }});
+
+            break;
+        case -1:
+            console.trace(e.data.exception);
+        default:
+            alert(top.getMessage(this.status));
+
+            console.log(this.responseText && JSON.parse(this.responseText).error);
+    }
+}
+
+function initSetting(e) {
+    switch(e.data.status) {
+        case 200:
+            const settingData = JSON.parse(e.data.responseText);
+
+            if ("display" in settingData) {
+                document.body.classList["display" in settingData && settingData.display === "name"? "add": "remove"]("name");
+            }
+            
+            if ("linkColor" in settingData) {
+                Path.COLOR = settingData.linkColor;
+            }
+
+            if ("linkSize" in settingData) {
+                Path.WIDTH = settingData.linkSize;
+            }
+            
+            initialize();
+            
+            break;
+        case -1:
+            console.trace(e.data.exception);
+        default:
+            alert(top.getMessage(this.status));
+
+            console.log(this.responseText && JSON.parse(this.responseText).error);
+    }
+}
+
+thread.onmessage = initNode;
+
+thread.postMessage({action: "request", request: {
+    command: "get",
+    target: "node"
+}});
+
+		</script>
+	
+	</body>
+	
+</html>
