@@ -440,7 +440,17 @@ function addNode(id, pos) {
 }
 
 function setNode(id, status) {
-    addClass(window.nodeSVGMap[id], status);
+    const
+        node = parent.nodeData[id],
+        icon = parent.iconData[node.type || "unknown"],
+        svgNode = window.nodeSVGMap[id],
+        svgIcon = svgNode.querySelector("image");
+
+    if (status === "shutdown" && icon.shutdown) {
+        svgIcon.setAttributeNS(xlinkNS, "xlink:href", icon.shutdown);
+    }
+
+    addClass(svgNode, status);
 }
 
 function setClick() {

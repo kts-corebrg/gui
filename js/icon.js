@@ -248,5 +248,115 @@ ITAhM.iconData = {
         color: "",
         texture: "/img/3d/app.png",
         top: "/img/3d/app-top.png"
+    },
+    "AP": {
+        "group": "sos",
+        "src": "img/kts/normal/ap.png",
+        "disabled": "img/kts/normal/ap.png",
+        "shutdown": "img/kts/shutdown/ap.png"
+    },
+    "카메라": {
+        "group": "sos",
+        "src": "img/kts/normal/camera.png",
+        "disabled": "img/kts/normal/camera.png",
+        "shutdown": "img/kts/shutdown/camera.png"
+    },
+    "DMZ": {
+        "group": "sos",
+        "src": "img/kts/normal/dmz.png",
+        "disabled": "img/kts/normal/dmz.png",
+        "shutdown": "img/kts/shutdown/dmz.png"
+    },
+    "출입문": {
+        "group": "sos",
+        "src": "img/kts/normal/door.png",
+        "disabled": "img/kts/normal/door.png",
+        "shutdown": "img/kts/shutdown/door.png"
+    },
+    "ERP": {
+        "group": "sos",
+        "src": "img/kts/normal/erp.png",
+        "disabled": "img/kts/normal/erp.png",
+        "shutdown": "img/kts/shutdown/erp.png"
+    },
+    "허브": {
+        "group": "sos",
+        "src": "img/kts/normal/hub.png",
+        "disabled": "img/kts/normal/hub.png",
+        "shutdown": "img/kts/shutdown/hub.png"
+    },
+    "L2스위치": {
+        "group": "sos",
+        "src": "img/kts/normal/l2.png",
+        "disabled": "img/kts/normal/l2.png",
+        "shutdown": "img/kts/shutdown/l2.png"
+    },
+    "L3스위치": {
+        "group": "sos",
+        "src": "img/kts/normal/l3.png",
+        "disabled": "img/kts/normal/l3.png",
+        "shutdown": "img/kts/shutdown/l3.png"
+    },
+    "NAS": {
+        "group": "sos",
+        "src": "img/kts/normal/nas.png",
+        "disabled": "img/kts/normal/nas.png",
+        "shutdown": "img/kts/shutdown/nas.png"
+    },
+    "노트북": {
+        "group": "sos",
+        "src": "img/kts/normal/notebook.png",
+        "disabled": "img/kts/normal/notebook.png",
+        "shutdown": "img/kts/shutdown/notebook.png"
+    },
+    
+    "컴퓨터": {
+        "group": "sos",
+        "src": "img/kts/normal/pc.png",
+        "disabled": "img/kts/normal/pc.png",
+        "shutdown": "img/kts/shutdown/pc.png"
+    },
+    "전화기": {
+        "group": "sos",
+        "src": "img/kts/normal/phone.png",
+        "disabled": "img/kts/normal/phone.png",
+        "shutdown": "img/kts/shutdown/phone.png"
+    },
+    "프린터": {
+        "group": "sos",
+        "src": "img/kts/normal/printer.png",
+        "disabled": "img/kts/normal/printer.png",
+        "shutdown": "img/kts/shutdown/printer.png"
+    },
+    "라벨프린터": {
+        "group": "sos",
+        "src": "img/kts/normal/printer_label.png",
+        "disabled": "img/kts/normal/printer_label.png",
+        "shutdown": "img/kts/shutdown/printer_label.png"
+    },
+    "복합기": {
+        "group": "sos",
+        "src": "img/kts/normal/printer_multi.png",
+        "disabled": "img/kts/normal/printer_multi.png",
+        "shutdown": "img/kts/shutdown/printer_multi.png"
+    },
+    "서버": {
+        "group": "sos",
+        "src": "img/kts/normal/server.png",
+        "disabled": "img/kts/normal/server.png",
+        "shutdown": "img/kts/shutdown/server.png"
+    },
+    "공유기": {
+        "group": "sos",
+        "src": "img/kts/normal/share.png",
+        "disabled": "img/kts/normal/share.png",
+        "shutdown": "img/kts/shutdown/share.png"
+    },
+    "VPN": {
+        "group": "sos",
+        "src": "img/kts/normal/vpn.png",
+        "disabled": "img/kts/normal/vpn.png",
+        "shutdown": "img/kts/shutdown/vpn.png"
     }
 };
+
