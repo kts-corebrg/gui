@@ -369,7 +369,7 @@ function Node(id, base, pos) {
 	
 	addClass(this.node, "node");
 	
-	svgIcon.setAttributeNS(XLINK_NS, "xlink:href", "/"+ icon[base.protocol?"src": "disabled"] );
+	svgIcon.setAttributeNS(XLINK_NS, "xlink:href", icon[base.protocol?"src": "disabled"] );
 }
 
 Node.prototype = {
