@@ -11,49 +11,58 @@ body {
     font-size: 10pt;
 	position: fixed; top: 0; right: 0; bottom: 0; left: 0;
     margin: 0; padding: 0;
-    background-color: #f9f9f9;
+    background: #f9f9f9 url("/img/kts/signin/background.png") no-repeat center center fixed;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 main {
-    width: 320px;
+    width: 430px;
+    height: 460px;
+    background-color: #3a3a3a;
+    border-right: 5px solid #e83919;
+    position: relative;
+    display: flex; flex-direction: column;
+}
+
+img.raider {
+    position: absolute; top: 0; right: 0;
+    width: 81px; height: 98px;
+    transform: translateY(-100%);
+}
+
+p.title {
+    text-align: center;
+    margin: 3em 0;
+    flex: none;
 }
 
 form {
-    padding: 20px;
-    border: 1px solid #ddd;
-    background-color: #fff;
-}
-
-h1, h2 {
-    text-align: center;
+    flex: 1;
+    padding: 40px;
 }
 
 input {
 	width: 100%;
 	box-sizing: border-box;
-	padding: 10px;
+	padding: 1em;
 	border: 1px solid #ddd;
 	border-radius: 3px 3px 3px 3px;
 }
 
 input[type=submit] {
-	margin-top: 20px;
-	background-image: linear-gradient(#7af, #0084ff 45%,  #0084ff 55%, #7af);
-	border: 1px solid #07f;
-	font-weight: bold;
-	color: #fff;
+	padding: 2em;
+	background: #e83919 url("/img/kts/signin/connect.png") no-repeat center center;
 }
 
 input[name="ip"] {
-	background: url("/img/home.png") no-repeat 10px center;
+	background: #ffffff url("/img/home.png") no-repeat 10px center;
 	padding-left: 36px;
 }
 
 input[name="tcp"] {
-	background: transparent url("/img/port.png") no-repeat 10px center;
+	background: #ffffff url("/img/port.png") no-repeat 10px center;
 	padding-left: 36px;
 }
 
@@ -65,7 +74,6 @@ input[name="tcp"] {
 }
 
 body.ready,
-body:not(:lang(en)) :lang(en),
 body:not(.loading) .bg_loading {
     display: none;
 }
@@ -75,20 +83,21 @@ body:not(.loading) .bg_loading {
 	
 	<body class="ready" lang="ko">
 		<main>
-            <h1>Connect to agent</h1>
+            <img src="/img/kts/signin/raider.png" class="raider">
+            <p class="title">
+                <img src="/img/kts/signin/title.png" width="324" height="43">
+            </p>
             <form id="connect">
-                <p>IP Address</p>
-                <input type="text" name="ip" placeholder="IP address" autofocus required>
-                <p>TCP Port</p>
-                <input type="text" name="tcp" placeholder="TCP port" required>
-                <input type="submit" value="연결" lang="ko">
-                <input type="submit" value="Connect" lang="en">
+                <p>
+                    <img src="/img/kts/signin/ip.png">
+                    <input type="text" name="ip" placeholder="IP address" autofocus required>
+                </p>
+                <p>
+                    <img src="/img/kts/signin/tcp.png">
+                    <input type="text" name="tcp" placeholder="TCP port" required>
+                </p>
+                <input type=submit value="">
             </form>
-            <h1>
-                <a href="http://www.corebrg.com">
-                    <img width="64" height="64" src="/img/logo.png">
-                </a>
-            </h1>
 		</main>
 		
 		<div class="bg_loading"></div>
