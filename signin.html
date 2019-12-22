@@ -64,6 +64,11 @@ input {
     flex: 1;
 }
 
+input[type=reset] {
+	padding: 1em;
+	background: #e83919 url("/img/kts/signin/cancel.png") no-repeat center center;
+}
+
 input[type=submit] {
 	padding: 1em;
 	background: #e83919 url("/img/kts/signin/login.png") no-repeat center center;
@@ -119,7 +124,7 @@ function cancel() {
                     <input type="password" name="password" value="root" required>
                 </p>
                 <div class="footer">
-                    <input type="reset" value="취소">
+                    <input type="reset" value="">
                     <input type="submit" value="">
                 </div>
             </form>

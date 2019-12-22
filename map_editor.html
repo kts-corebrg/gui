@@ -340,11 +340,14 @@ function Node(id, base, pos) {
 	svgBG.setAttribute("cx", 0);
 	svgBG.setAttribute("cy", 0);
 
-	this.node.id = id;
+	this.node.id = id;console.log(id);
 	this.node.setAttribute("transform", "translate("+ this.pos.x +","+ this.pos.y +")");
-	this.node.onclick = onClickDevice;
-	this.node.addEventListener("link", onLink);
-	
+    this.node.onclick = onClickDevice;
+    
+    if (!pos) {
+	    this.node.addEventListener("link", onLink);
+    }
+
     if (icon.group === "group") {
 		this.node.ondblclick = onEnterGroup;
 
@@ -695,7 +698,7 @@ function onLink(e) {
     const
         nodeFrom = Math.min (Number(this.id), e.detail.peer),
         nodeTo = Math.max (Number(this.id), e.detail.peer);
-    
+        
     top.postRequest({
         command: "get",
         target: "path",
@@ -940,7 +943,7 @@ document.getElementById("refresh").onclick = function () {
 			
 			window.linkAnchor.setAttribute("transform", "translate("+ (pos.x + x) +","+ (pos.y + y) +")");
 			
-			if (hasClass(svgDevice, "node") && svgDevice !== window.selected.node && !hasClass(svgDevice, "group")) {
+			if (hasClass(svgDevice, "node") && svgDevice !== window.selected.node/* && !hasClass(svgDevice, "group")*/) {
 				var matrix = svgDevice.transform.baseVal.getItem(0).matrix;
 				
 				x = matrix.e;
