@@ -569,7 +569,7 @@ Path.COLOR = "#fff";
 Path.DIFF = 6;
 
 function drawPath(nodeFrom, nodeTo, path, linkArray) {
-	if (!(nodeFrom in window.nodeObjectMap) && !(nodeTo in window.nodeObjectMap)) {
+	if (!(nodeFrom in window.nodeObjectMap) || !(nodeTo in window.nodeObjectMap)) {
 		return;
 	}
 

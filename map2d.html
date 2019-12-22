@@ -502,7 +502,7 @@ function hasClass(e, className) {
 }
 
 function drawPath(nodeFrom, nodeTo, option, linkArray) {
-    if (!(nodeFrom in window.nodeSVGMap) && !(nodeTo in window.nodeSVGMap)) {
+    if (!(nodeFrom in window.nodeSVGMap) || !(nodeTo in window.nodeSVGMap)) {
 		return;
 	}
 
