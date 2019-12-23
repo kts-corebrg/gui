@@ -943,7 +943,7 @@ document.getElementById("refresh").onclick = function () {
 			
 			window.linkAnchor.setAttribute("transform", "translate("+ (pos.x + x) +","+ (pos.y + y) +")");
 			
-			if (hasClass(svgDevice, "node") && svgDevice !== window.selected.node/* && !hasClass(svgDevice, "group")*/) {
+			if (hasClass(svgDevice, "node") && svgDevice !== window.selected.node && svgDevice !== window.upperNode.node /* && !hasClass(svgDevice, "group")*/) {
 				var matrix = svgDevice.transform.baseVal.getItem(0).matrix;
 				
 				x = matrix.e;
