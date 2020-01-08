@@ -7,10 +7,11 @@
 		<title>Setting @ ITAhM</title>
 		
 		<style>
-@import "css/style.css";
+@import "/css/style.css";
+@import "/css/fa.css";
 
 body {
-	width: 1024px;
+	max-width: 1024px;
 	padding: 10px;
 	margin: 0 auto;
 }
@@ -145,6 +146,11 @@ body:not(.loading) .bg_loading {
 	vertical-align: bottom;
 }
 
+span.logo {
+    font: 24px "Font Awesome 5 Free";
+    color: #0084ff;
+}
+
 .button {
 	border:none;
 	display:inline-block;
@@ -252,6 +258,21 @@ function createItem(src, key, data, func) {
 	li.className = "item";
 
 	return li;
+}
+
+function showMessage(data) {
+    switch (data.status) {
+    case 401:
+        alert("Notice.\n\n"+ "세션 만료.");
+
+        break;
+    default:
+        alert("Error!\n\n"+ "오류코드: "+ data.status);
+    }
+
+    try {
+        console.log(JSON.parse(data.responseText).error);
+    } catch (e) {}
 }
 
 		</script>
@@ -487,21 +508,21 @@ function createItem(src, key, data, func) {
 			</div>
 			<div class="bg_loading"></div>
         </form>
-        
-		<h2>
-			<img width="24px" height="24px" src="/img/support.png" class="logo">
-			고객 지원
-		</h2>
-		<form class="box" id="support">
-			<input type="text" name="url" placeholder="company/service.html">
-			<input type="submit" value="이동">
-		</form>
 		<h2>
             <img width="24px" height="24px" src="/img/backup.png" class="logo">
             백업
         </h2>
         <form class="box" id="backup">
             <input type=submit value="설정 백업">
+        </form>
+        <h2>
+            <span class="logo">
+                &#xf05e;
+            </span>
+            서비스
+        </h2>
+        <form class="box" id="stop">
+            <input type=submit value="서비스 중지">
         </form>
 		<script src="js/ITAhM.js"></script>
 		<script src="js/object.js"></script>
@@ -585,7 +606,7 @@ if (top.account.level > 0) {
             thread.postMessage([window.localStorage.getItem("agent"), {
                 command: "set",
                 target: "config",
-                key: "snmpServer"
+                key: "smtpServer"
             }]);
         }
     }
@@ -611,7 +632,7 @@ if (top.account.level > 0) {
         thread.postMessage([window.localStorage.getItem("agent"), {
             command: "set",
             target: "config",
-            key: "snmpServer",
+            key: "smtpServer",
             value: {
                 server: container.elements["server"].value,
                 user: container.elements["username"].value,
@@ -1049,15 +1070,6 @@ if (top.account.level > 0) {
 (function(form) {
 	form.onsubmit = function (e) {
 		e.preventDefault();
-
-		window.open("/"+ form.elements["url"].value);
-	};
-}) (document.getElementById("support"));
-
-
-(function(form) {
-	form.onsubmit = function (e) {
-		e.preventDefault();
     
         document.body.classList.add("loading");
 
@@ -1090,6 +1102,32 @@ if (top.account.level > 0) {
 	};
 }) (document.getElementById("backup"));
 
+(function(form) {
+	form.onsubmit = function (e) {
+		e.preventDefault();
+    
+        document.body.classList.add("loading");
+
+        window.thread.onmessage = e => {
+            switch (e.data.status) {
+            case 200:
+                top.location.replace("/service.html");
+
+                break;
+            default:
+                showMessage(e.data);
+            }
+        };
+
+        window.thread.postMessage({
+            action: "request",
+            request: {
+                command: "stop",
+                service: "nms"
+            }
+        });
+	};
+}) (document.getElementById("stop"));
 		</script>
 	
 	</body>
