@@ -8,6 +8,7 @@
 		
 		<style>
 @import "/css/style.css";
+@import "/css/fa.css";
 
 body {
 	font-family: arial, tahoma, "맑은 고딕";
@@ -27,10 +28,6 @@ body, input, button {
 	transform-origin: left top;
 }
 
-#selector:not(.active) {
-	display: none;
-}
-
 #map {
 	width: 100%; height: 100%;
 }
@@ -41,9 +38,13 @@ text::selection {
 }
 
 text {
-	font-family: 10px "맑은 고딕", Tahoma, Arial;
+	font: 10px "맑은 고딕", Tahoma, Arial;
 	fill: #fff;
 	text-anchor: middle;
+}
+
+#up text {
+    font: 30px 'Font Awesome 5 Free';
 }
 
 #line text {
@@ -65,17 +66,12 @@ polyline {
 	stroke: #0f0;
 }
 
+#path tspan {
+    alignment-baseline: middle;
+}
+
 g.node >text {
 	font-size: 12px;
-}
-
-:not(#select) >#anchor,
-body.loading g {
-	display: none;
-}
-
-#anchor.group >#link_anchor {
-	display: none;
 }
 
 g.node *,
@@ -91,22 +87,9 @@ g.node circle {
 	fill: none;
 }
 
-g.node.parent circle {
-	stroke: #ddd;
-	fill: #0084ff;
-}
-
 #select >g.node >circle,
 #check >g.node >circle {
 	fill: #fff;
-}
-
-#parent {
-	transform-origin: right bottom;
-}
-
-#parent >circle:not(:hover) {
-	stroke: #ddd; stroke-width: 5px;
 }
 
 g.group >circle {
@@ -117,7 +100,7 @@ g.upper >circle {
 	stroke: #ddd;
 }
 
-body.drag g.group:hover >circle {
+body.drag g.group:hover:not(.selected) >circle {
 	stroke: #0f0;
 }
 /* control */
@@ -131,13 +114,13 @@ body.drag g.group:hover >circle {
 
 /* button */
 .button {
-    display: flex;
-    justify-content:center;
-    align-items:center;
-    width: 32px; height: 32px;
+    font: 20px 'Font Awesome 5 Free';
+    color: #ffffff;
     cursor: pointer;
     border: 1px solid transparent;
-    box-sizing: border-box;
+    display: flex; width: 32px; height: 32px;
+    align-items: center;
+    justify-content: center;
 }
 
 .button.enable {
@@ -155,27 +138,16 @@ body.drag g.group:hover >circle {
     position: relative;
 }
 
-.popup {
-    display: flex;
-}
-
-.popup_container:not(:hover) .popup {
-	display: none;
-}
-
-.popup span {
-	background-color: #555;
-	display: block;
-}
-
-.popup span:hover {
-	background-color: #0084ff;
-}
-
-/**/
-
+:not(#select) >#anchor,
+#selector:not(.active),
+#anchor.group >#link_anchor,
+.popup_container:not(:hover) .popup,
+body.loading g,
 body.name .node tspan:last-child,
 body:not(.name) .node tspan:first-child,
+body:not(.exit) #exit,
+body:not(.exit) #up,
+body:not(.drag) #up,
 body:not(.root) .root {
 	display: none;
 }
@@ -197,11 +169,11 @@ function isChecked(svgDevice) {
 }
 
 function onMoveGroup() {
-	const id = this.id && Number(this.id)|| undefined;
+	const id = this.dataset.id && Number(this.dataset.id);
 
 	[window.checkCanvas, window.selectCanvas].forEach(function (canvas) {
 		[].forEach.call(canvas.querySelectorAll("g.node"), function (node) {
-			parent.positionData[node.id].parent = id;
+			parent.positionData[node.dataset.id].parent = id;
 		});
 	});
 
@@ -275,25 +247,21 @@ function findParentFromStage(id) {
 function onClickDevice(e) {
 	e.stopPropagation();
 
-    if (!this.id) {
-        return;
-    }
-
 	if (window.isDragging) {
 		window.isDragging = false;
 	}
 	else if (e.shiftKey) {
-		window.nodeObjectMap[this.id].check(true);
+		window.nodeObjectMap[this.dataset.id].check(true);
 	}
 	else if (e.ctrlKey) {
-		window.nodeObjectMap[this.id].check();
+		window.nodeObjectMap[this.dataset.id].check();
 	}
 	else {
 		[].forEach.call(window.checkCanvas.querySelectorAll("g.node"), function (svgDevice) {
-			window.nodeObjectMap[svgDevice.id].reset();
+			window.nodeObjectMap[svgDevice.dataset.id].reset();
 		});
 
-		window.nodeObjectMap[this.id].select();
+		window.nodeObjectMap[this.dataset.id].select();
 	}
 }
 
@@ -312,25 +280,16 @@ function Node(id, base, pos) {
 		svgLabel = document.createElementNS(SVG_NS, "text"),
 		svgAddr = document.createElementNS(SVG_NS, "tspan"),
 		svgName = document.createElementNS(SVG_NS, "tspan"),
-		icon = window.iconData[base.type || "unknown"];
+		icon = window.iconData[base.type || "unknown"] || window.iconData["unknown"];
 	
 	this.node = document.createElementNS(SVG_NS, "g");
-	this.pos = pos || parent.positionData[id];
 	this.paths = [];
 	this.protocol = base.protocol || "";
-
-	if (!this.pos) {
-		parent.positionData[id] = this.pos = {
-			x: 0,
-			y: 0,
-			parent: window.upper
-		};
-	}
-	else {
-		this.pos.x = Math.round(this.pos.x /10) *10;
-		this.pos.y = Math.round(this.pos.y /10) *10;
-	}
-
+    this.pos = pos;
+    
+    pos.x = Math.round(pos.x /10) *10;
+    pos.y = Math.round(pos.y /10) *10;
+    
 	svgIcon.setAttribute("x", ICON_SIZE *-1 /2);
 	svgIcon.setAttribute("y", ICON_SIZE *-1 /2);
 	svgIcon.setAttribute("width", ICON_SIZE +"px");
@@ -340,13 +299,10 @@ function Node(id, base, pos) {
 	svgBG.setAttribute("cx", 0);
 	svgBG.setAttribute("cy", 0);
 
-	this.node.id = id;
-	this.node.setAttribute("transform", "translate("+ this.pos.x +","+ this.pos.y +")");
-    this.node.onclick = onClickDevice;
-    
-    if (!pos) {
-	    this.node.addEventListener("link", onLink);
-    }
+	this.node.dataset.id = id;
+	this.node.setAttribute("transform", "translate("+ pos.x +","+ pos.y +")");
+	this.node.onclick = onClickDevice;
+	this.node.addEventListener("link", onLink);
 
     if (icon.group === "group") {
 		this.node.ondblclick = onEnterGroup;
@@ -383,6 +339,22 @@ Node.prototype = {
 		this.x = this.pos.x;
 		this.y = this.pos.y;
 	},
+    uplink: function () {
+        const
+            uplink = document.createElementNS(SVG_NS, "polyline"),
+            points = [];
+
+        for (let i=0, j=ICON_SIZE *-1 /2; i<5; i++) {
+            points.push("0,"+ (j -i *10));
+        }
+        
+        uplink.setAttribute("points", points.join(" "));
+        uplink.setAttribute("marker-mid", "url(#arrow)");
+        uplink.setAttribute("marker-start", "url(#arrow)");
+        uplink.setAttribute("marker-end", "url(#arrow)");
+
+        this.node.appendChild(uplink);
+    },
 	move: function (x, y) {
 		this.pos.x = Math.round((x + this.x) /10) *10;
 		this.pos.y = Math.round((y + this.y) /10) *10;
@@ -426,7 +398,9 @@ Node.prototype = {
 		}
 
 		window.selected = this;
-	
+    
+        addClass(this.node, "selected");
+
 		window[hasClass(this.node, "group")? "addClass": "removeClass"](window.anchor, "group");
 	
 		moveAnchor(this.pos.x, this.pos.y);
@@ -438,6 +412,8 @@ Node.prototype = {
 
 		if (window.selected === this) {
 			window.selected = undefined;
+
+            removeClass(this.node, "selected");
 
 			window.fragment.appendChild(window.anchor);
 		}
@@ -548,13 +524,13 @@ Path.prototype = {
                 points = "0,0 "+ x +", "+ y;
 
                 if (this.labelFrom) {
-                    this.labelFrom.setAttribute("x", x /4);
-                    this.labelFrom.setAttribute("y", y /4);
+                    this.labelFrom.setAttribute("x", x /3);
+                    this.labelFrom.setAttribute("y", y /3);
                 }
 
                 if (this.labelTo) {
-                    this.labelTo.setAttribute("x", x *3 /4);
-                    this.labelTo.setAttribute("y", y *3 /4);
+                    this.labelTo.setAttribute("x", x *2 /3);
+                    this.labelTo.setAttribute("y", y *2 /3);
                 }
         }
         
@@ -572,44 +548,32 @@ Path.COLOR = "#fff";
 Path.DIFF = 6;
 
 function drawPath(nodeFrom, nodeTo, path, linkArray) {
-	if (!(nodeFrom in window.nodeObjectMap) || !(nodeTo in window.nodeObjectMap)) {
-		return;
-	}
-
     var
-        canvas = window.pathCanvas,
-        nodeFromObj, nodeToObj;
+        nodeFromObj = window.nodeObjectMap[nodeFrom],
+        nodeToObj = window.nodeObjectMap[nodeTo];
 
-    if (!(nodeFrom in window.nodeObjectMap)) {
+    if (!nodeFromObj && !nodeToObj) {
+        return;
+    }
+
+    if (!nodeFromObj) {
         const id = findParentFromStage(parent.positionData[nodeFrom].parent);
 
         if (id) {
             nodeFromObj = nodeObjectMap[id];
-        } else if (window.upper) {
-            nodeFromObj = window.upperNode;
-
-            canvas = window.upperCanvas;
         } else {
-            return;
+            return nodeObjectMap[nodeTo].uplink();
         }
-    } else {
-        nodeFromObj = window.nodeObjectMap[nodeFrom];
     }
 
-    if (!(nodeTo in window.nodeObjectMap)) {
+    if (!nodeToObj) {
         const id = findParentFromStage(parent.positionData[nodeTo].parent);
 
         if (id) {
             nodeToObj = window.nodeObjectMap[id];
-        } else if (window.upper) {
-            nodeToObj = window.upperNode;
-
-            canvas = window.upperCanvas;
         } else {
-            return;
+            return nodeObjectMap[nodeFrom].uplink();
         }
-    }else {
-        nodeToObj = window.nodeObjectMap[nodeTo];
     }
 
 	const
@@ -618,39 +582,53 @@ function drawPath(nodeFrom, nodeTo, path, linkArray) {
     nodeFromObj.connect(pathObject);
 	nodeToObj.connect(pathObject);
 
-    pathObject.to(canvas);
+    pathObject.to(window.pathCanvas);
 }
 
 function initialize() {
 	const df = document.createDocumentFragment();
-	var node;
+    var node, pos;
 
     if (window.upper) {
-        const pos = parent.positionData[window.upper];
+        const
+            svg = document.getElementById("up"),
+            upper = parent.positionData[String(window.upper)].parent;
 
-        window.upperNode = new Node (window.upper, window.nodeData[window.upper], {x: 0, y: 0});
-        
-        if (pos.parent) {
-            window.upperNode.node.id = pos.parent;
-        } else {
-            window.upperNode.node.removeAttribute("id");
+        document.getElementById("exit").onclick = e => moveStage(upper);
+
+        if (upper) {
+            svg.dataset.id = upper;
         }
+        
+        svg.addEventListener("movegroup", onMoveGroup);
 
-        window.upperNode.layer(window.upperCanvas);
+        document.body.classList.add("exit");
     }
 
 	for (let id in window.nodeData) {
-		node = new Node(id, window.nodeData[id]);
+        pos = parent.positionData[id];
+
+        if (!pos) {
+            pos = {
+                x: 0,
+                y: 0,
+                parent: window.upper
+            };
+
+            parent.positionData[id] = pos;
+        } else if (pos.parent && !(pos.parent in window.nodeData)) {
+            pos.parent = window.upper;
+        }
+
+        if (pos.parent !== window.upper) {
+            continue;
+        }
+
+		node = new Node(id, window.nodeData[id], pos);
 		
-		if (node.pos.parent && !(node.pos.parent in window.nodeData)) {
-			node.pos.parent = window.upper;
-		}
+        node.layer(df);
 
-		if (node.pos.parent == window.upper) {
-			node.layer(df);
-
-			window.nodeObjectMap[id] = node;
-		}
+        window.nodeObjectMap[id] = node;
 	}
 
 	window.nodeCanvas.appendChild(df);
@@ -688,7 +666,7 @@ function initialize() {
             drawPath(nodeFrom, nodeTo, peerMap[nodeTo], link && link[nodeTo]);
         }
 	}
-	
+
 	zoom();
 
 	document.body.classList.remove("loading");
@@ -696,9 +674,9 @@ function initialize() {
 
 function onLink(e) {
     const
-        nodeFrom = Math.min (Number(this.id), e.detail.peer),
-        nodeTo = Math.max (Number(this.id), e.detail.peer);
-        
+        nodeFrom = Math.min (Number(this.dataset.id), e.detail.peer),
+        nodeTo = Math.max (Number(this.dataset.id), e.detail.peer);
+    
     top.postRequest({
         command: "get",
         target: "path",
@@ -722,14 +700,18 @@ function onLink(e) {
     });
 }
 
-function onEnterGroup() {
-    if (this.id) {
-        window.sessionStorage.setItem("stage_id", this.id);
+function moveStage(id) {
+    if (id) {
+        window.sessionStorage.setItem("stage_id", id);
     } else {
         window.sessionStorage.removeItem("stage_id");
     }
 
-	window.location.reload();
+    window.location.reload();
+}
+
+function onEnterGroup() {
+    moveStage(this.dataset.id);
 }
 
 function onEvent(e) {
@@ -756,11 +738,17 @@ function onEvent(e) {
 						width="16" height="16" cursor="pointer"><!-- -16/2, -34 -16/2 -->
 						<title>이 앵커를 드래그하여 다른 장비와 연결합니다.</title>
 					</image>
-				</g>
+                </g>
+                <marker id="arrow" viewBox="0 0 10 5" refX="5" refY="3" markerWidth="10" markerHeight="5">
+                    <path d="M5 0L10 5L0 5z" fill="red" />
+                </marker>
 			</defs>
 			<g id="container" transform="translate(0, 0) scale(1, 1) translate(0, 0)">
 				<g id="path"></g>
-                <g id="up"></g>
+                <g id="up" class="group upper">
+                    <circle r="30" x="0" y="0" stroke-width="5" stroke="#dddddd" fill="#0084ff"></circle>
+                    <text alignment-baseline="middle">&#xf2f5;</text>
+                </g>
                 <g id="link">
 					<line x1="0" y1="0" x2="0" y2="0" />
 				</g>
@@ -782,25 +770,30 @@ function onEvent(e) {
                 </span>
             </li>
             <li>
-                <span class="button enable active">
-                    <img id="refresh" src="/img/btn/refresh.png" width="32px" height="32px" title="새로 고침">
+                <span class="button enable active" id="refresh" title="새로 고침">
+                    &#xf2f9;
                 </span>
             </li>
             <li class="popup_container">
-                <span class="button enable active">
-                    <img id="add" src="/img/btn/add.png" width="32px" height="32px" title="노드 추가">
+                <span class="button enable active" id="add" title="노드 추가">
+                    &#xf067;
                 </span>
                 <div class="popup">
-                    <span class="button enable active">
-                        <img id="add_node" src="/img/btn/add_node.png" width="32px" height="32px" title="SNMP/ICMP/TCP 노드 추가">
+                    <span class="button enable active" id="add_node" title="노드 추가">
+                        &#xf233;
                     </span>
-                    <span class="button enable active">
-                        <img id="add_group" src="/img/btn/add_group.png" width="32px" height="32px" title="그룹 노드 추가">
+                    <span class="button enable active" id="add_group" title="그룹 추가">
+                        &#xf5fd;
                     </span>
-                    <span class="button enable active">
-                        <img id="search" src="/img/btn/search.png" width="32px" height="32px" title="네트워크 대역 탐색">
+                    <span class="button enable active" id="search" title="스마트 탐지">
+                        &#xf002;
                     </span>
                 </div>
+            </li>
+            <li>
+                <span class="button enable active" id="exit" title="상위 이동">
+                    &#xf2f5;
+                </span>
             </li>
 		</ul>
 		
@@ -812,6 +805,9 @@ function onEvent(e) {
 		<script>
 		
 const
+    $ = {
+        thread: new Worker("/js/thread.js")
+    },
 	SVG_NS = "http://www.w3.org/2000/svg",
 	XLINK_NS = "http://www.w3.org/1999/xlink",
 	ICON_SIZE = 40,
@@ -819,7 +815,6 @@ const
 	//OFFSET_R = OFFSET_C - ICON_SIZE /2;
 
 var
-    thread = new Worker("/js/thread.js"),
     upper = window.sessionStorage.getItem("stage_id") && Number(window.sessionStorage.getItem("stage_id")) || undefined,
 	nodeCanvas = document.getElementById("node"),
 	upperCanvas = document.getElementById("up"),
@@ -831,7 +826,6 @@ var
 	linkSVG = linkCanvas.querySelector("line"),
 	anchor = document.getElementById("anchor"),
 	linkAnchor = document.getElementById("link_anchor"),
-	parentAnchor = document.querySelector("g.parent.node"),
 	fragment = document.createDocumentFragment(),
 	transform = container.transform.baseVal,
 	nodeObjectMap = {},
@@ -840,7 +834,7 @@ var
     iconData = ITAhM.iconData,
 	isDragging = false;
 
-thread.postMessage({
+$.thread.postMessage({
     action: "initialize",
     agent: window.localStorage.getItem("agent")
 });
@@ -877,7 +871,7 @@ document.getElementById("refresh").onclick = function () {
 		}
 		else {
 			[].forEach.call(window.checkCanvas.querySelectorAll("g.node"), function (svgDevice) {
-				window.nodeObjectMap[svgDevice.id].reset();
+				window.nodeObjectMap[svgDevice.dataset.id].reset();
 			});
 		}
 	});
@@ -908,7 +902,7 @@ document.getElementById("refresh").onclick = function () {
 		else if (isChecked(target)) {
 			[window.selectCanvas, window.checkCanvas].forEach(function (canvas) {
 				for (let checked = canvas.querySelectorAll("g.node"), i=0, _i=checked.length; i<_i; i++) {
-					window.nodeObjectMap[checked[i].id].set();
+					window.nodeObjectMap[checked[i].dataset.id].set();
 				}
 			});
 
@@ -921,7 +915,7 @@ document.getElementById("refresh").onclick = function () {
 				window.nodeObjectMap[id].set();
 			}
 
-			window.upperCanvas.style.display = "none";
+			//window.upperCanvas.style.display = "none";
 		}
 		
 		window.isDragging = true;
@@ -943,7 +937,7 @@ document.getElementById("refresh").onclick = function () {
 			
 			window.linkAnchor.setAttribute("transform", "translate("+ (pos.x + x) +","+ (pos.y + y) +")");
 			
-			if (hasClass(svgDevice, "node") && svgDevice !== window.selected.node && svgDevice !== window.upperNode.node /* && !hasClass(svgDevice, "group")*/) {
+			if (hasClass(svgDevice, "node") && svgDevice !== window.selected.node && !hasClass(svgDevice, "group")) {
 				var matrix = svgDevice.transform.baseVal.getItem(0).matrix;
 				
 				x = matrix.e;
@@ -964,7 +958,7 @@ document.getElementById("refresh").onclick = function () {
 		else if (action === "move") {
 			document.body.classList.add("drag");
 			
-			[].forEach.call(window.checkCanvas.querySelectorAll("g.node"), svgNode => window.nodeObjectMap[svgNode.id].move(x, y));
+			[].forEach.call(window.checkCanvas.querySelectorAll("g.node"), svgNode => window.nodeObjectMap[svgNode.dataset.id].move(x, y));
 		}
 		else {
 			window.transform.getItem(2).setTranslate(x, y);
@@ -1005,7 +999,7 @@ document.getElementById("refresh").onclick = function () {
 			
 			if (key === SHIFT) {
 				[].forEach.call(window.nodeCanvas.querySelectorAll("g.node"), function (svgDevice) {
-					const node = window.nodeObjectMap[svgDevice.id];
+					const node = window.nodeObjectMap[svgDevice.dataset.id];
 
 					if (node && x1 < node.pos.x && node.pos.x < x2 && y1 < node.pos.y && node.pos.y < y2) {
 						node.check(true);
@@ -1016,7 +1010,7 @@ document.getElementById("refresh").onclick = function () {
 				const tmp = [];
 				
 				[].forEach.call(window.checkCanvas.querySelectorAll("g.node"), svgDevice => {
-					const node = window.nodeObjectMap[svgDevice.id];
+					const node = window.nodeObjectMap[svgDevice.dataset.id];
 
 					if (node && x1 < node.pos.x && node.pos.x < x2 && y1 < node.pos.y && node.pos.y < y2) {
 						tmp.push(node);
@@ -1024,7 +1018,7 @@ document.getElementById("refresh").onclick = function () {
 				});
 
 				[].forEach.call(window.nodeCanvas.querySelectorAll("g.node"), svgDevice => {
-					const node = window.nodeObjectMap[svgDevice.id];
+					const node = window.nodeObjectMap[svgDevice.dataset.id];
 
 					if (node && x1 < node.pos.x && node.pos.x < x2 && y1 < node.pos.y && node.pos.y < y2) {
 						node.check();
@@ -1047,9 +1041,9 @@ document.getElementById("refresh").onclick = function () {
 			
 			window.fragment.appendChild(window.linkSVG);
 			
-			if (hasClass(svgDevice, "node") &&  svgDevice !== window.selected.node) {				
+			if (hasClass(svgDevice, "node") &&  svgDevice !== window.selected.node && !hasClass(svgDevice, "group")) {				
 				svgDevice.dispatchEvent(ITAhM.util.createCustomEvent("link", {
-					peer: Number(window.selected.node.id)
+					peer: Number(window.selected.node.dataset.id)
 				}));
 			}
 		}
@@ -1064,7 +1058,7 @@ document.getElementById("refresh").onclick = function () {
 
 			[window.checkCanvas, window.selectCanvas].forEach(function (canvas) {
 				[].forEach.call(canvas.querySelectorAll("g.node"), function (node) {
-					window.nodeObjectMap[node.id].move(0, 0);
+					window.nodeObjectMap[node.dataset.id].move(0, 0);
 				});
 			});
 
@@ -1079,7 +1073,7 @@ document.getElementById("refresh").onclick = function () {
 
 			window.transform.getItem(2).setTranslate(0, 0);
 
-			window.upperCanvas.style.display = "initial";
+			//window.upperCanvas.style.display = "initial";
 		}
 	});
 
@@ -1104,12 +1098,12 @@ document.getElementById("add").onclick = function () {
 
 document.getElementById("edit_anchor").onclick = e => {
 	const
-        node = window.nodeData[window.selected.node.id],
-        type = window.iconData[node.type || "unknown"];
+        node = window.nodeData[window.selected.node.dataset.id],
+        icon = window.iconData[node.type || "unknown"] || window.iconData["unknown"];
 
 	top.showDialog.call(window,
-		type.group === "group"? "/dialog/group.html":
-		"/dialog/node.html", window.selected.node.id);
+		icon.group === "group"? "/dialog/group.html":
+		"/dialog/node.html", window.selected.node.dataset.id);
 	
 	e.stopPropagation();
 };
@@ -1127,9 +1121,9 @@ function initNode(e) {
         case 200:
             window.nodeData = JSON.parse(e.data.responseText);
             
-            thread.onmessage = initPath;
+            $.thread.onmessage = initPath;
 
-            thread.postMessage({action: "request", request: {
+            $.thread.postMessage({action: "request", request: {
                 command: "get",
                 target: "path"
             }});
@@ -1149,9 +1143,9 @@ function initPath(e) {
         case 200:
             window.pathData = JSON.parse(e.data.responseText);
             
-            thread.onmessage = initLink;
+            $.thread.onmessage = initLink;
             
-            thread.postMessage({action: "request", request: {
+            $.thread.postMessage({action: "request", request: {
                 command: "get",
                 target: "link"
             }});
@@ -1171,9 +1165,9 @@ function initLink(e) {
         case 200:
             window.linkData = JSON.parse(e.data.responseText);
             
-            thread.onmessage = initIcon;
+            $.thread.onmessage = initIcon;
             
-            thread.postMessage({action: "request", request: {
+            $.thread.postMessage({action: "request", request: {
                 command: "get",
                 target: "icon"
             }});
@@ -1197,9 +1191,9 @@ function initIcon(e) {
                 window.iconData[type] = iconData[type];
             }
 
-            thread.onmessage = initSetting;
+            $.thread.onmessage = initSetting;
             
-            thread.postMessage({action: "request", request: {
+            $.thread.postMessage({action: "request", request: {
                 command: "get",
                 target: "setting"
             }});
@@ -1243,9 +1237,9 @@ function initSetting(e) {
     }
 }
 
-thread.onmessage = initNode;
+$.thread.onmessage = initNode;
 
-thread.postMessage({action: "request", request: {
+$.thread.postMessage({action: "request", request: {
     command: "get",
     target: "node"
 }});

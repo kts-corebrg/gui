@@ -354,6 +354,8 @@ document.querySelector("div.log").onclick = function () {
 	}
 
 	function onClick(e) {
+        window.sessionStorage.removeItem("stage_id");
+        
 		[].forEach.call(list, remove);
 
 		this.classList.add("selected");

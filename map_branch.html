@@ -1,0 +1,161 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title></title>
+		
+		<style>
+@import "/css/itahm.css";
+@import "/css/glyphicon.css";
+
+body {
+    position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+    margin: 0; padding: 0;
+}
+
+#map {
+    width: 100%; height: 100%;
+}
+
+.test {
+    width: 20px;
+    height: 20px;
+    border: 3px solid red;
+    border-radius: 50%;
+}
+
+.test.shutdown {
+    animation: status 2s infinite;
+}
+
+@keyframes status {
+	0% {
+    	opacity: 0;
+        transform: scale(0);
+    }
+    50% {
+    	opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0);
+    }
+}
+
+        </style>
+        <script>
+        
+function showMessage(data) {
+    switch (data.status) {
+    case 400:
+        alert("Notice.\n\n"+ "Branch 정보를 제공하지 않음.");
+
+        break;
+    case 401:
+        alert("Notice.\n\n"+ "세션 만료.");
+
+        break;
+    default:
+        alert("Error!\n\n"+ "오류코드: "+ data.status);
+
+        try {
+            console.log(JSON.parse(data.responseText).error);
+        } catch (e) {}
+    }
+}
+
+        </script>
+    </head>
+    <body class="loading">
+        <div id="map"></div>
+        <div class="bg_loading"></div>
+
+        <script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=2d5f1506a806e98b9b51ecb765853bd7&libraries=services,clusterer,drawing"></script>
+        <script>
+
+const $ = {
+        thread: new Worker("/js/thread.js")
+    };
+
+try {
+    $.map = new kakao.maps.Map(document.getElementById("map"), {
+        center: new kakao.maps.LatLng(36.289385, 127.729168),
+        level: 12
+    });
+} catch (e) {
+    alert("Error!\n\n지도 접근 오류.");
+
+    throw "지도 접근 오류.";
+}
+
+$.thread.postMessage({
+    action: "initialize",
+    agent: window.localStorage.getItem("agent")
+});
+
+$.clusterer = new kakao.maps.MarkerClusterer({
+    map: $.map, // 마커들을 클러스터로 관리하고 표시할 지도 객체 
+    averageCenter: true, // 클러스터에 포함된 마커들의 평균 위치를 클러스터 마커 위치로 설정 
+    minLevel: 10, // 클러스터 할 최소 지도 레벨
+    disableClickZoom: true
+});
+
+$.map.addOverlayMapTypeId(kakao.maps.MapTypeId.TERRAIN);
+
+kakao.maps.event.addListener(
+    $.clusterer,
+    'clusterclick',
+    cluster => $.map.setLevel($.map.getLevel() -1, {anchor: cluster.getCenter()})
+);
+
+function addBranch(branch) {
+    if (!("lat" in branch) || !("lng" in branch)) {
+        return;
+    }
+
+    const
+        pos = new kakao.maps.LatLng(branch.lat, branch.lng),
+        marker = new kakao.maps.Marker({
+        position: pos,
+        clickable: true
+    });
+
+    kakao.maps.event.addListener(marker, "click", e => parent.moveStage(branch.id));
+
+    new kakao.maps.CustomOverlay({
+        map: $.map,
+        position: pos,
+        content: "<div class='test shutdown'></div>"
+    });
+
+    $.clusterer.addMarker(marker);
+}
+
+$.thread.onmessage = function (e) {
+    switch(e.data.status) {
+    case 200:
+        const branchData = JSON.parse(e.data.responseText);
+
+        for (let id in branchData) {
+            addBranch(branchData[id]);
+        }
+    default:
+        showMessage(e.data);
+
+        document.body.classList.remove("loading");
+    }
+};
+
+$.thread.postMessage({
+    action: "request",
+    request: {
+        target: "branch",
+        command: "get"
+    }
+});
+        </script>
+        
+    </body>
+</html>

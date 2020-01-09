@@ -24,7 +24,7 @@ function start() {
     addFloor();
 
     onResize();
-
+/*
     if (parent.upper) {
         const
             id = parent.upper,
@@ -32,7 +32,7 @@ function start() {
 
         mesh.onclick = parent.moveStage.bind(mesh, parent.posData[id].parent);
     }
-
+*/
     render();
 
     animate();
@@ -40,24 +40,24 @@ function start() {
     document.body.classList.remove("loading");
 }
 
-function display() {
-    if ("display" in parent.settingData) {
-	    document.body.classList[parent.settingData.display == "name"? "add": "remove"]("name");
-    }
+function display(name) {
+    document.body.classList[name === "name"? "add": "remove"]("name");
 }
 
-function addNode(id, pos) {
+/**
+args: node, icon, position
+**/
+function addNode(args) {
     const
-        base = parent.nodeData[id],
-        mesh = getMesh(base.type);
+        node = args.node,
+        mesh = getMesh(args.icon),
+        pos = args.position;
     
-    pos = pos || parent.posData[id];
-
     mesh.position.x += pos.x;
     mesh.position.y += pos.z || 0;
     mesh.position.z += pos.y;
     
-    if ("role" in base && base.role === "group") {
+    if (args.icon.group === "group") {
         const mark = new THREE.Mesh(new THREE.CylinderBufferGeometry(MESH_WIDTH, MESH_WIDTH, 6, 64, 1, true),
             new THREE.MeshBasicMaterial({
                 color: 0x400080,
@@ -67,24 +67,22 @@ function addNode(id, pos) {
             mark.position.set(pos.x, (pos.z || 0) +3, pos.y);
         
         scene.add(mark);
-        
-        mesh.onclick = parent.moveStage.bind(mesh, id);
-    }
-    else if (base.protocol === "snmp") {
-        mesh.onclick = () => {
-            window.sessionStorage.setItem("node_id", id);
-            window.sessionStorage.setItem("previous", "/dashboard.html");
-
-            window.location.href = "/resource.html";
-        }
     }
     
+    if (args.onclick) {
+        mesh.onclick = e => {
+            if (!window.cancelClick) {
+                args.onclick(e);
+            }
+        }
+    }
+
     addMarker(mesh, status);
     
     scene.add(mesh);
     
-    nodeList.push(mesh);
-    nodeMap[id] = mesh;
+    $.meshArray.push(mesh);
+    nodeMap[String(node.id)] = mesh;
     
     floorSize.width = Math.max(floorSize.width, Math.abs(pos.x));
     floorSize.height = Math.max(floorSize.height, Math.abs(pos.y));
@@ -92,55 +90,46 @@ function addNode(id, pos) {
     return mesh;
 }
 
-/** public **/
-function drawPath(nodeFrom, nodeTo, option) {
-	if (!(nodeFrom in nodeMap) && !(nodeTo in nodeMap)) {
-		return;
-	}
+/**
+args: 
+**/
+function drawPath(args) {
+    const 
+        nodeFrom = args.nodeFrom,
+        nodeTo = args.nodeTo,
+        option = args.option;
     
     var
-        pos1 = parent.posData[nodeFrom],
-        pos2 = parent.posData[nodeTo];
-
-    if (!(nodeFrom in nodeMap)) {
-        const id = parent.findParentFromStage(pos1.parent);
-
-        if (id) {
-            pos1 = parent.posData[id];
-        }
-        else if (parent.upper) {
-            pos1 = UPPER_POS;
-        }
-        else {
-            return;
-        }
+        posFrom = args.posFrom,
+        posTo = args.posTo;
+    
+    if (!posFrom) {
+        posFrom = {
+            x: posTo.x,
+            y: posTo.y,
+            z: 50
+        };
     }
 
-    if (!(nodeTo in nodeMap)) {
-        const id = parent.findParentFromStage(pos2.parent);
-
-        if (id) {
-            pos2 = parent.posData[id];
-        }
-        else  if (parent.upper) {
-            pos2 = UPPER_POS;
-        }
-        else {
-            return;
-        }
+    if (!posTo) {
+        posTo = {
+            x: posFrom.x,
+            y: posFrom.y,
+            z: 50
+        };
     }
 
-    if (!("z" in pos1)) {
-        pos1.z = 0;
+    if (!("z" in posFrom)) {
+        posFrom.z = 0;
     }
 
-    if (!("z" in pos2)) {
-        pos2.z = 0;
+    if (!("z" in posTo)) {
+        posTo.z = 0;
     }
 
     const
-        v1 = new THREE.Vector3(pos1.x, pos1.z, pos1.y),
-        v2 = new THREE.Vector3(pos2.x, pos2.z, pos2.y),
+        v1 = new THREE.Vector3(posFrom.x, posFrom.z, posFrom.y),
+        v2 = new THREE.Vector3(posTo.x, posTo.z, posTo.y),
         link = new THREE.Mesh(new THREE.CylinderBufferGeometry(LINE_RADIUS, LINE_RADIUS, v1.distanceTo(v2), 32, 1, true),
             new THREE.MeshLambertMaterial({
                 color: 0x00ff00
@@ -302,7 +291,7 @@ function getIntersect() {
     
     raycaster.setFromCamera(mouse, camera);
     
-    const intersects = raycaster.intersectObjects(nodeList);
+    const intersects = raycaster.intersectObjects($.meshArray);
     
     if (intersects.length > 0) {
         return intersects[0].object;
@@ -341,8 +330,7 @@ function skyView() {
     camera.position.set(0, 600, 0);
 }
 
-function getMesh(type = "unknown") {
-    const icon = parent.iconData[type];
+function getMesh(icon) {
     var mesh, height, mat;
 
     if (icon.texture) {
@@ -380,6 +368,9 @@ function getMesh(type = "unknown") {
         <body class="loading  name">
             <div class="bg_loading"></div>
         <script>
+const $ = {
+    meshArray: []
+};
 
 const
     MESH_HEIGHT_U = 10,
@@ -415,7 +406,6 @@ const
     matrix = new THREE.Matrix4(),
     rotationX = new THREE.Matrix4(),
     yAxis = new THREE.Vector3(0, 1, 0),
-    nodeList = [],
     markerList = [],
     nodeMap = {},
     floorSize = {

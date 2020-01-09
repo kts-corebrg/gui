@@ -135,14 +135,19 @@ body:not(.removable) input[type=reset] {
 					<li><input type="text" name="group" placeholder="아이콘 그룹" required>
 				</ul>
 				<ul>
-					<li>활성 이미지
+					<li>기본 이미지
 					<li></li>
 					<li><input type="text" name="url" placeholder="Image URL" required>
 				</ul>
 				<ul>
 					<li>비활성 이미지
 					<li></li>
-					<li><input type="text" name="disabled" placeholder="Image URL" required>
+					<li><input type="text" name="disabled" placeholder="Image URL">
+                </ul>
+                <ul>
+					<li>장애 이미지
+					<li></li>
+					<li><input type="text" name="shutdown" placeholder="Image URL">
 				</ul>
 			</div>
 			<footer>
@@ -217,7 +222,8 @@ if (top.account.level === 0) {
                 type: form.elements["type"].value,
                 group: form.elements["group"].value,
                 src: form.elements["url"].value,
-                disabled: form.elements["disabled"].value
+                disabled: form.elements["disabled"].value || form.elements["url"].value,
+                shutdown: form.elements["shutdown"].value || form.elements["url"].value
             }
         }, function () {
 			switch (this.status) {
@@ -280,17 +286,20 @@ if (top.account.level === 0) {
         form.elements["type"].value = type;
         form.elements["group"].value = icon.group;
         form.elements["url"].value = icon.src;
-        form.elements["disabled"].value = icon.disabled;
+        form.elements["disabled"].value = icon.disabled || icon.src;
+        form.elements["shutdown"].value = icon.shutdown || icon.src;
 
         drawImage(form.elements["url"], icon.src);
-        drawImage(form.elements["disabled"], icon.disabled);
+        drawImage(form.elements["disabled"], icon.disabled || icon.src);
+        drawImage(form.elements["shutdown"], icon.shutdown || icon.src);
     }
 
     (function (delay) {
         var active;
 
 		form.elements["url"].oninput =
-		form.elements["disabled"].oninput = function (e) {
+        form.elements["disabled"].oninput =
+		form.elements["shutdown"].oninput = function (e) {
 			const
 				input = this,
 				start = performance.now();

@@ -270,7 +270,7 @@ ITAhM.iconData = {
     "출입문": {
         "group": "sos",
         "src": "/img/kts/normal/door.png",
-        "disabled": "//img/svg/disabled/unknown.svg",
+        "disabled": "/img/svg/disabled/unknown.svg",
         "shutdown": "/img/kts/shutdown/door.png"
     },
     "ERP": {

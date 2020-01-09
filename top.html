@@ -178,8 +178,8 @@ header span.cancel::before {
 function initialize() {
     const container = document.querySelector("main");
     
-    if (parent.settingData.top) {
-        window.topSetting = JSON.parse(parent.settingData.top);
+    if ($.settingData.top) {
+        window.topSetting = JSON.parse($.settingData.top);
     }
 
 	if (!window.topSetting) {
@@ -307,7 +307,7 @@ function setTop(section, topArray) {
 
 function createTopItem(value, toString, chart) {
 	var 
-		base = parent.nodeData[value.id],
+		base = $.nodeData[value.id],
 		item = document.createElement("ul"),
 		gauge;
 
@@ -346,11 +346,25 @@ function createTopItem(value, toString, chart) {
 
 /* public */
 function display() {
-    if ("display" in parent.settingData) {
-	    document.body.classList[parent.settingData.display == "name"? "add": "remove"]("name");
+    if ("display" in $.settingData) {
+	    document.body.classList[$.settingData.display == "name"? "add": "remove"]("name");
     }
 }
 
+function showMessage(data) {
+    switch (data.status) {
+    case 401:
+        alert("Notice!\n\n"+ "세션 만료.");
+
+        break;
+    default:
+        alert("Error!\n\n"+ "오류코드: "+ data.status);
+    }
+
+    try {
+        console.log(JSON.parse(data.responseText).error);
+    } catch (e) {}
+}
 		</script>
 		
 	</head>
@@ -414,16 +428,22 @@ function display() {
 		<script>
 
 const INTERVAL = 8000;
+const $ = {
+    nodeData: parent.getNodeData(),
+    settingData: parent.getSettingData(),
+    nodeList : parent.getMonitorList()
+};
+
 var
     request = {
 		command: "get",
 		target: "top",
-        list: parent.nodeList,
+        list: $.nodeList,
         resource: {
         }
 	};
 
-if ("display" in parent.settingData && parent.settingData.display !== "name") {
+if ("display" in $.settingData && $.settingData.display !== "name") {
 	document.body.classList.remove("name");
 }
 
@@ -476,12 +496,12 @@ document.querySelector("header span.apply").onclick = function (e) {
             switch (e.data.status) {
                 case 200:
                     document.body.classList.remove("edit");
-                    
-                    parent.settingData.top = value;
 
                     break;
+                case -1:
+                    console.trace(e.data.exception);
                 default:
-                    alert("Error!\n\n오류 코드 "+ e.data.status);
+                    showMessage(e.data);
             }
 
             this.disabled = false;
