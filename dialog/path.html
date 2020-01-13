@@ -567,8 +567,11 @@ document.getElementById("close").onclick = close;
         }, function () {
             switch(this.status) {
             case 200:
-                initCustom(JSON.parse(this.responseText).customLink.split(','));
+                const settingData = JSON.parse(e.data.responseText);
 
+                if ("customLink" in settingData) {
+                    initCustom(settingData.customLink.split(','));
+                }
             case 204:
                 initNodeFrom();
                 

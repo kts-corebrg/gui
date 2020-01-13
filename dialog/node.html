@@ -404,7 +404,11 @@ document.getElementById("close").onclick = close;
         thread.onmessage = e => {
             switch(e.data.status) {
             case 200:
-                initCustom(JSON.parse(e.data.responseText).custom.split(','));
+                const settingData = JSON.parse(e.data.responseText);
+
+                if ("custom" in settingData) {
+                    initCustom(settingData.custom.split(','));
+                }
             case 204:
                 initProfile();
                 
