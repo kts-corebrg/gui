@@ -567,7 +567,7 @@ document.getElementById("close").onclick = close;
         }, function () {
             switch(this.status) {
             case 200:
-                const settingData = JSON.parse(e.data.responseText);
+                const settingData = JSON.parse(this.responseText);
 
                 if ("customLink" in settingData) {
                     initCustom(settingData.customLink.split(','));
