@@ -537,9 +537,10 @@ document.getElementById("close").onclick = close;
 					}
 					
                     if (node.ip) {
-                        form.elements["monitor"].disabled = false;
-
+                        form.elements["ip"].disabled = true;
                         form.elements["ip"].value = node.ip;
+                    } else {
+                        form.elements["monitor"].disabled = true;
                     }
                     
 					form.elements["name"].value = node.name || "";
@@ -554,12 +555,7 @@ document.getElementById("close").onclick = close;
 					}
 
                     form.elements["monitor"].value = node.protocol || "";
-						
-					// ip는 한번 지정하면 변경할 수 없다.
-					if (node.ip) {
-						form.elements["ip"].disabled = true;
-					}
-
+					
 					document.body.classList.add("edit");
 
 					break;
