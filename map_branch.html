@@ -46,11 +46,65 @@ body {
 
         </style>
         <script>
+const posArray = [
+    {lat: 33.43425593356482, lng: 126.60894911165877},
+    {lat: 35.266637854863966, lng: 129.01415753612397},
+    {lat: 35.1171148067879, lng: 126.80608387809532},
+    {lat: 35.813992984669596, lng: 127.15565148814676},
+    {lat: 37.73853834482183 , lng: 128.77143977123447},
+    {lat: 37.86948717965687 , lng: 127.73594847930121 },
+    {lat: 37.43239471438287 , lng: 126.98249818462877},
+    {lat: 37.571190123422944 , lng: 126.79555469290447},
+    {lat: 37.733959674926965 , lng: 127.06301842818345}
+];
+var i=0;
+
+function _addBranch(branch) {
+    switch (branch.type) {
+    case "office":
+    case "group":
+        const pos = posArray[i++];
         
+        branch.lat = pos.lat;
+        branch.lng = pos.lng;
+
+        addBranch(branch);
+
+        break;
+    }
+}
+
+function customize() {
+    $.thread.onmessage = function (e) {
+        switch(e.data.status) {
+        case 200:
+            const branchData = JSON.parse(e.data.responseText);
+
+            for (let id in branchData) {
+                _addBranch(branchData[id]);
+            }
+
+            break;
+        default:
+            showMessage(e.data);
+
+            document.body.classList.remove("loading");
+        }
+    };
+
+    $.thread.postMessage({
+        action: "request",
+        request: {
+            target: "node",
+            command: "get"
+        }
+    });
+}
+
 function showMessage(data) {
     switch (data.status) {
     case 400:
-        alert("Notice.\n\n"+ "Branch 정보를 제공하지 않음.");
+        customize();
 
         break;
     case 401:
@@ -141,6 +195,8 @@ $.thread.onmessage = function (e) {
         for (let id in branchData) {
             addBranch(branchData[id]);
         }
+
+        break;
     default:
         showMessage(e.data);
 
