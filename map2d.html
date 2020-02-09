@@ -233,7 +233,11 @@ function onDragMove(e) {
 function createNodeTitle(node) {
 	const title = [];
     
-	if (node.ip) {
+    if (node.address) {
+        title.push("실제 주소 : "+ node.address);
+        title.push("관리 키 : "+ node.ip);
+
+    } else if (node.ip) {
 		title.push("IP 주소 : "+ node.ip);
 	}
 
