@@ -18,14 +18,28 @@ body {
     width: 100%; height: 100%;
 }
 
-.test {
-    width: 20px;
-    height: 20px;
-    border: 3px solid red;
+.label {
+    display: inline-block;
+    padding: 0.5em;
+    text-align: center;
+    font-weight: bold;
+    background-color: #ffffff;
+    border: 1px solid #0084ff;
+}
+
+.status {
+    width: 2em;
+    height: 2em;
     border-radius: 50%;
 }
 
-.test.shutdown {
+.status.critical {
+    border: 3px solid orange;
+    animation: status 2s infinite;
+}
+
+.status.shutdown {
+    border: 3px solid red;
     animation: status 2s infinite;
 }
 
@@ -46,78 +60,20 @@ body {
 
         </style>
         <script>
-const posArray = [
-    {lat: 33.43425593356482, lng: 126.60894911165877},
-    {lat: 35.266637854863966, lng: 129.01415753612397},
-    {lat: 35.1171148067879, lng: 126.80608387809532},
-    {lat: 35.813992984669596, lng: 127.15565148814676},
-    {lat: 37.73853834482183 , lng: 128.77143977123447},
-    {lat: 37.86948717965687 , lng: 127.73594847930121 },
-    {lat: 37.43239471438287 , lng: 126.98249818462877},
-    {lat: 37.571190123422944 , lng: 126.79555469290447},
-    {lat: 37.733959674926965 , lng: 127.06301842818345}
-];
-var i=0;
-
-function _addBranch(branch) {
-    switch (branch.type) {
-    case "office":
-    case "group":
-        const pos = posArray[i++];
         
-        branch.lat = pos.lat;
-        branch.lng = pos.lng;
-
-        addBranch(branch);
-
-        break;
-    }
-}
-
-function customize() {
-    $.thread.onmessage = function (e) {
-        switch(e.data.status) {
-        case 200:
-            const branchData = JSON.parse(e.data.responseText);
-
-            for (let id in branchData) {
-                _addBranch(branchData[id]);
-            }
-
-            break;
-        default:
-            showMessage(e.data);
-
-            document.body.classList.remove("loading");
-        }
-    };
-
-    $.thread.postMessage({
-        action: "request",
-        request: {
-            target: "node",
-            command: "get"
-        }
-    });
-}
-
 function showMessage(data) {
     switch (data.status) {
-    case 400:
-        customize();
-
-        break;
     case 401:
         alert("Notice.\n\n"+ "세션 만료.");
 
         break;
     default:
         alert("Error!\n\n"+ "오류코드: "+ data.status);
-
-        try {
-            console.log(JSON.parse(data.responseText).error);
-        } catch (e) {}
     }
+
+    try {
+        console.log(JSON.parse(data.responseText).error);
+    } catch (e) {}
 }
 
         </script>
@@ -130,7 +86,8 @@ function showMessage(data) {
         <script>
 
 const $ = {
-        thread: new Worker("/js/thread.js")
+        thread: new Worker("/js/thread.js"),
+        overlayMap: {}
     };
 
 try {
@@ -139,9 +96,9 @@ try {
         level: 12
     });
 } catch (e) {
-    alert("Error!\n\n지도 접근 오류.");
+    alert("Error!\n\n지도 불러오기 오류.");
 
-    throw "지도 접근 오류.";
+    throw "kakao.maps.Map exception";
 }
 
 $.thread.postMessage({
@@ -172,35 +129,55 @@ function addBranch(branch) {
     const
         pos = new kakao.maps.LatLng(branch.lat, branch.lng),
         marker = new kakao.maps.Marker({
-        position: pos,
-        clickable: true
-    });
+            position: pos,
+            clickable: true,
+            text: "!!!"//branch.name || undefined
+        });
 
     kakao.maps.event.addListener(marker, "click", e => parent.moveStage(branch.id));
+    
+    if (branch.name) {
+        new kakao.maps.CustomOverlay({
+            map: $.map,
+            position: pos,
+            content: "<span class='label'>"+ branch.name +"</span>"
+        });
+    }
 
-    new kakao.maps.CustomOverlay({
+    $.overlayMap[String(branch.id) ] = new kakao.maps.CustomOverlay({
         map: $.map,
-        position: pos,
-        content: "<div class='test shutdown'></div>"
+        position: pos
     });
 
     $.clusterer.addMarker(marker);
 }
 
+function initialzie() {
+    for (let id in $.branchData) {
+        addBranch($.branchData[id]);
+    }
+
+    parent.getNodeList("critical").forEach(id => {
+        $.overlayMap[id].setContent("<div class='status critical'></div>");
+    });
+
+    parent.getNodeList("shutdown").forEach(id => {
+        $.overlayMap[id].setContent("<div class='status shutdown'></div>");
+    });
+}
+
 $.thread.onmessage = function (e) {
     switch(e.data.status) {
     case 200:
-        const branchData = JSON.parse(e.data.responseText);
+        $.branchData = JSON.parse(e.data.responseText);
 
-        for (let id in branchData) {
-            addBranch(branchData[id]);
-        }
-
+        initialzie();
+        
+        document.body.classList.remove("loading");
+        
         break;
     default:
         showMessage(e.data);
-
-        document.body.classList.remove("loading");
     }
 };
 
