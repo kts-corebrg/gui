@@ -357,6 +357,18 @@ ITAhM.iconData = {
         "src": "/img/kts/normal/vpn.png",
         "disabled": "/img/svg/disabled/unknown.svg",
         "shutdown": "/img/kts/shutdown/vpn.png"
+    },
+    "멀티스위칭": {
+        group: "sos",
+        src: "/img/kts/normal/multi switch.png",
+        disabled: "/img/svg/disabled/multi switch.png",
+        shutdown: "/img/kts/shutdown/multi switch.png"
+    },
+    "방화벽": {
+        group: "sos",
+        src: "/img/kts/normal/firewall.png",
+        disabled: "/img/svg/disabled/firewall.png",
+        shutdown: "/img/kts/shutdown/firewall.png"
     }
 };
 
