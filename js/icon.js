@@ -361,13 +361,13 @@ ITAhM.iconData = {
     "멀티스위칭": {
         group: "sos",
         src: "/img/kts/normal/multi switch.png",
-        disabled: "/img/svg/disabled/multi switch.png",
+        disabled: "/img/kts/disabled/multi switch.png",
         shutdown: "/img/kts/shutdown/multi switch.png"
     },
     "방화벽": {
         group: "sos",
         src: "/img/kts/normal/firewall.png",
-        disabled: "/img/svg/disabled/firewall.png",
+        disabled: "/img/kts/disabled/firewall.png",
         shutdown: "/img/kts/shutdown/firewall.png"
     }
 };
