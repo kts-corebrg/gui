@@ -402,7 +402,11 @@ function addNode(args) {
 	window.nodeSVGMap[String(node.id)] = svgDevice;
     
 	if ("protocol" in node) {
-		svgIcon.setAttributeNS(xlinkNS, "xlink:href", icon.src);
+        if ("status" in node && !node.status) {
+            svgIcon.setAttributeNS(xlinkNS, "xlink:href", icon.shutdown || icon.src);
+        } else {
+            svgIcon.setAttributeNS(xlinkNS, "xlink:href", icon.src);
+        }
 	}
 	else if (icon.group === "group") {
 		svgIcon.setAttributeNS(xlinkNS, "xlink:href", icon.src);
