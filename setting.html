@@ -237,6 +237,11 @@ input:focus +.slider {
 input:checked + .slider:before {
     transform: translateX(1em);
 }
+/* end */
+
+body:not(.root) .root {
+    display: none;
+}
 
 		</style>
 		<script>
@@ -431,7 +436,7 @@ function showMessage(data) {
 			<h2>
 				<img width="24px" height="24px" src="/img/account.png" class="logo">
 				계정
-				<input class="button" type="submit" value="+" title="계정 추가" class="root">
+				<input class="button root" type="submit" value="+" title="계정 추가">
 			</h2>
 			<div class="box">
 				<ul id="account_list" class="list"></ul>
@@ -443,7 +448,7 @@ function showMessage(data) {
 			<h2>
 				<img width="24px" height="24px" src="/img/profile.png" class="logo">
 				SNMP 프로파일
-				<input class="button" type="submit" value="+" title="프로파일 추가" class="root">
+				<input class="button root" type="submit" value="+" title="프로파일 추가">
 			</h2>
 			<div class="box">
 				<ul id="profile_list" class="list"></ul>
@@ -455,12 +460,12 @@ function showMessage(data) {
 		<form id="event" class="container loading disabled">
 			<h2>
 				<img width="24px" height="24px" src="/img/send_mail.png" class="logo">
-                <label class="switch" title="이벤트 통지 활성화">
+                <label class="switch root" title="이벤트 통지 활성화">
                     <input type="checkbox" id="snmp_enable">
                     <span class="slider"></span>
                 </label>
                 이벤트 통지
-				<input class="button" type="button" name="add" value="+" title="수신자 추가" class="root">
+				<input class="button root" type="button" name="add" value="+" title="수신자 추가" class="root">
 			</h2>
 			<div class="box">
                 <div class="setting">
@@ -502,7 +507,7 @@ function showMessage(data) {
                             </span>
                         </li>
                     </ul>
-                    <input type="submit" value="적용">
+                    <input class="root" type="submit" value="적용">
                 </div>
 				<ul id="user_list" class="list"></ul>
 			</div>
@@ -512,7 +517,7 @@ function showMessage(data) {
             <img width="24px" height="24px" src="/img/backup.png" class="logo">
             백업
         </h2>
-        <form class="box" id="backup">
+        <form class="box root" id="backup">
             <input type=submit value="설정 백업">
         </form>
         <h2>
@@ -521,7 +526,7 @@ function showMessage(data) {
             </span>
             서비스
         </h2>
-        <form class="box" id="stop">
+        <form class="box root" id="stop">
             <input type=submit value="서비스 중지">
         </form>
 		<script src="js/ITAhM.js"></script>
@@ -541,6 +546,8 @@ if (top.account.level > 0) {
 		function (e) {
 			e.disabled = true;
 		});
+} else {
+    document.body.classList.add("root");
 }
 
 (function(container) {
