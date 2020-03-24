@@ -102,9 +102,11 @@ function signIn (account) {
                 
                     button = document.getElementById(name);
                     
-                    button.classList.add(services[name]);
+                    if (button) {
+                        button.classList.add(services[name]);
 
-                    button.title = (services[name]? "Stop": "Start") + " Service";
+                        button.title = (services[name]? "Stop": "Start") + " Service";
+                    }
                 }
                 
                 document.body.classList.add("authorized", "initialized");
