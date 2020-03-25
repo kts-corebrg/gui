@@ -26,7 +26,7 @@
         const
             status = e.data.status,
             event = JSON.parse(e.data.responseText);
-console.log(event);
+
         listenRequest.eventID = event.eventID +1;
 
         if (status == 200) {
