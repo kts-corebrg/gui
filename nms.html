@@ -126,9 +126,9 @@ function onEvent(status, event) {
         break;
     }
 
-    if (event.level == 2) {
+    if (event.level == 2 && $.sound) {
         try {
-            window.sound.play();
+            $.sound.play();
         } catch (e) {
             console.log(e);
         };
@@ -163,6 +163,10 @@ function signIn (account) {
             
             setMenu(window.settingData.menu === "true");
 
+            if (!("mute" in window.settingData) || window.settingData.mute === "false") {
+                $.sound = new Audio("siren.mp3");
+            }
+console.log($.sound);
             startThread(window.localStorage.getItem("agent"));
 
             window.frame.src="/dashboard.html";
@@ -298,12 +302,12 @@ function signOut() {
         
 		<script>
 
+const $ = {};
 var
     frame = document.getElementById("frame"),
 	count = document.getElementById("count"),
 	dialog = document.getElementById("dialog"),
 	log = document.getElementById("log"),
-	sound = new Audio("siren.mp3"),
 	isClosed = false,
 	logCount = 0;
 

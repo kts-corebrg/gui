@@ -428,6 +428,16 @@ function showMessage(data) {
 					PX
 					<input type="submit" value="적용" class="root">
 				</form>
+            </p>
+            <p>
+				<form id="mute">
+					소리 설정:
+					<select name="mute">
+						<option value="false" selected>기본
+						<option value="true">음소거
+					</select>
+					<input type="submit" value="적용" class="root">
+				</form>
 			</p>
 			<div class="bg_loading"></div>
 		</div>
@@ -948,6 +958,14 @@ if (top.account.level > 0) {
 		postRequest("linkSize", Math.max(this.elements["size"].value, 0).toString());
 	};
 
+    document.getElementById("mute").onsubmit = function (e) {
+		e.preventDefault();
+		
+        if (confirm("Notice.\n\n브라우저 새로고침 후 반영됩니다.\n계속 하겠습니까?")) {
+		    postRequest("mute", this.elements["mute"].value);
+        }
+	};
+
     top.postRequest({
         command: "get",
         target: "setting"
@@ -981,6 +999,11 @@ if (top.account.level > 0) {
                 if ("linkSize" in settingData) {
                     document.getElementById("link_size").querySelector("[name=size]").value = settingData.linkSize;
                 }
+
+                if ("mute" in settingData) {
+                    document.getElementById("mute").querySelector("[name=mute]").value = settingData.mute;
+                }
+
                 container.classList.remove("loading");
 
                 break;
