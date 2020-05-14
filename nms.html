@@ -166,7 +166,7 @@ function signIn (account) {
             if (!("mute" in window.settingData) || window.settingData.mute === "false") {
                 $.sound = new Audio("siren.mp3");
             }
-console.log($.sound);
+            
             startThread(window.localStorage.getItem("agent"));
 
             window.frame.src="/dashboard.html";
